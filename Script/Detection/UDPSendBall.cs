@@ -6,6 +6,10 @@ using System.Collections;
 using detections;
 using System.Threading.Tasks;
 
+namespace MyNamespace
+{
+    
+
 public class UDPSendBall : MonoBehaviour
 {
     private static UDPSendBall _instance;
@@ -113,4 +117,4 @@ public class UDPSendBall : MonoBehaviour
 public class BallData
 {
     public Ball Ball;
-}
+}}

@@ -4,6 +4,8 @@ using RTLTMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using UPersian.Components;
+namespace Assets.SuperGoalie.Scripts.Managers
+{
 public class ScoreSystem : MonoBehaviour
 {
     // UI Panels
@@ -646,4 +648,5 @@ public class ScoreSystem : MonoBehaviour
             .Replace('8', '۸')
             .Replace('9', '۹');
     }
+}
 }
