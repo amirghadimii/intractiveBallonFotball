@@ -57,6 +57,21 @@ namespace GoalRush
             Vector2 newPos = GetRandomPositionInGoal();
             _clusterParent.anchoredPosition = newPos;
 
+            if (_currentGold != null)
+            {
+                var gm = GameManager.Instance;
+                if (gm != null)
+                {
+                    int newScore = gm.GetRandomGoldScore();
+                    TargetInteraction goldInt = _currentGold.GetComponent<TargetInteraction>();
+                    if (goldInt != null)
+                        goldInt.Setup(TargetType.Gold, newScore, this);
+                    TextMeshProUGUI label = _currentGold.GetComponentInChildren<TextMeshProUGUI>();
+                    if (label != null)
+                        label.text = $"+{newScore}";
+                }
+            }
+
             SpawnPenalties();
         }
 

@@ -21,14 +21,15 @@ namespace GoalRush
         [SerializeField] private int _goldScoreMin = 15;
         [SerializeField] private int _goldScoreMax = 35;
         [SerializeField] private int _penaltyBaseScore = -15;
-        [SerializeField] private int _penaltyStepBonus = -3;
+        [SerializeField] private float _goldScorePerSec = 0.25f;
+        [SerializeField] private float _penaltyScorePerSec = 0.2f;
 
-        [Header("Difficulty (Step-based)")]
+        [Header("Difficulty")]
         [SerializeField] private int _basePenaltyCount = 4;
         [SerializeField] private int _maxPenaltyCount = 10;
-        [SerializeField] private int _stepInterval = 20;
-        [SerializeField] private float _goldShrinkPerStep = 0.07f;
-        [SerializeField] private float _penaltyGrowPerStep = 0.05f;
+        [SerializeField] private float _penaltyStepInterval = 20f;
+        [SerializeField] private float _goldShrinkPerSec = 0.004f;
+        [SerializeField] private float _penaltyGrowPerSec = 0.003f;
         [SerializeField] private float _goldMinScale = 0.5f;
         [SerializeField] private float _penaltyMaxScale = 1.5f;
 
@@ -51,12 +52,16 @@ namespace GoalRush
         public int Score { get; private set; }
         public float RemainingTime { get; private set; }
 
+        public float ElapsedTime
+        {
+            get { return _gameDuration - RemainingTime; }
+        }
+
         public int CurrentDifficultyStep
         {
             get
             {
-                float elapsed = _gameDuration - RemainingTime;
-                return Mathf.FloorToInt(elapsed / _stepInterval);
+                return Mathf.FloorToInt(ElapsedTime / _penaltyStepInterval);
             }
         }
 
@@ -70,9 +75,9 @@ namespace GoalRush
 
         public int GetRandomGoldScore()
         {
-            int step = CurrentDifficultyStep;
-            int min = _goldScoreMin + (step * 3);
-            int max = _goldScoreMax + (step * 3);
+            int bonus = Mathf.FloorToInt(ElapsedTime * _goldScorePerSec);
+            int min = _goldScoreMin + bonus;
+            int max = _goldScoreMax + bonus;
             return Random.Range(min, max + 1);
         }
 
@@ -80,7 +85,8 @@ namespace GoalRush
         {
             get
             {
-                return _penaltyBaseScore + (CurrentDifficultyStep * _penaltyStepBonus);
+                int bonus = Mathf.FloorToInt(ElapsedTime * _penaltyScorePerSec);
+                return _penaltyBaseScore - bonus;
             }
         }
 
@@ -88,7 +94,7 @@ namespace GoalRush
         {
             get
             {
-                return Mathf.Max(_goldMinScale, 1f - (CurrentDifficultyStep * _goldShrinkPerStep));
+                return Mathf.Max(_goldMinScale, 1f - (ElapsedTime * _goldShrinkPerSec));
             }
         }
 
@@ -96,7 +102,7 @@ namespace GoalRush
         {
             get
             {
-                return Mathf.Min(_penaltyMaxScale, 1f + (CurrentDifficultyStep * _penaltyGrowPerStep));
+                return Mathf.Min(_penaltyMaxScale, 1f + (ElapsedTime * _penaltyGrowPerSec));
             }
         }
 
