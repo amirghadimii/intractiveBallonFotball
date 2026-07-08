@@ -24,6 +24,9 @@ namespace GoalRush
         [SerializeField] private float _goldScorePerSec = 0.25f;
         [SerializeField] private float _penaltyScorePerSec = 0.2f;
 
+        [Header("Combo")]
+        [SerializeField] private int _comboBonusPerStep = 2;
+
         [Header("Difficulty")]
         [SerializeField] private int _basePenaltyCount = 4;
         [SerializeField] private int _maxPenaltyCount = 10;
@@ -106,13 +109,31 @@ namespace GoalRush
             }
         }
 
+        public int Combo { get; private set; }
+        public int HighScore
+        {
+            get { return PlayerPrefs.GetInt("GoalRush_HighScore", 0); }
+            private set { PlayerPrefs.SetInt("GoalRush_HighScore", value); PlayerPrefs.Save(); }
+        }
+        public bool IsNewHighScore { get; private set; }
+        public int TotalClicks { get; private set; }
+        public int GoldHits { get; private set; }
+        public int PenaltyHits { get; private set; }
+        public float Accuracy
+        {
+            get { return TotalClicks > 0 ? (float)GoldHits / TotalClicks * 100f : 0f; }
+        }
+
         public System.Action<int> OnScoreChanged;
         public System.Action<float> OnTimerUpdated;
         public System.Action<GameState> OnStateChanged;
         public System.Action<int> OnCountdownTick;
+        public System.Action<int> OnComboChanged;
+        public System.Action<int> OnDifficultyStepChanged;
 
         private Coroutine _countdownCoroutine;
         private Coroutine _gameTimerCoroutine;
+        private int _lastDifficultyStep = -1;
 
         private void Awake()
         {
@@ -150,6 +171,7 @@ namespace GoalRush
 
         private void BeginPlaying()
         {
+            _lastDifficultyStep = -1;
             State = GameState.Playing;
             OnStateChanged?.Invoke(State);
 
@@ -162,6 +184,14 @@ namespace GoalRush
             while (RemainingTime > 0f)
             {
                 RemainingTime -= Time.deltaTime;
+
+                int step = CurrentDifficultyStep;
+                if (step != _lastDifficultyStep)
+                {
+                    _lastDifficultyStep = step;
+                    OnDifficultyStepChanged?.Invoke(step);
+                }
+
                 OnTimerUpdated?.Invoke(RemainingTime);
                 yield return null;
             }
@@ -173,6 +203,10 @@ namespace GoalRush
 
         private void EndGame()
         {
+            IsNewHighScore = Score > HighScore;
+            if (IsNewHighScore)
+                HighScore = Score;
+
             State = GameState.GameOver;
             OnStateChanged?.Invoke(State);
         }
@@ -183,10 +217,51 @@ namespace GoalRush
             OnScoreChanged?.Invoke(Score);
         }
 
+        public void RecordClick()
+        {
+            TotalClicks++;
+        }
+
+        public void RecordGoldHit()
+        {
+            GoldHits++;
+            Combo++;
+            OnComboChanged?.Invoke(Combo);
+
+            int bonus = (Combo > 1 ? Combo * _comboBonusPerStep : 0);
+            if (bonus > 0)
+                AddScore(bonus);
+        }
+
+        public void RecordPenaltyHit()
+        {
+            PenaltyHits++;
+            if (Combo > 0)
+            {
+                Combo = 0;
+                OnComboChanged?.Invoke(0);
+            }
+        }
+
+        public void ResetCombo()
+        {
+            if (Combo > 0)
+            {
+                Combo = 0;
+                OnComboChanged?.Invoke(0);
+            }
+        }
+
         public void ResetGame()
         {
             if (_gameTimerCoroutine != null) StopCoroutine(_gameTimerCoroutine);
             Score = 0;
+            Combo = 0;
+            TotalClicks = 0;
+            GoldHits = 0;
+            PenaltyHits = 0;
+            IsNewHighScore = false;
+            _lastDifficultyStep = -1;
             RemainingTime = _gameDuration;
             OnScoreChanged?.Invoke(0);
             OnTimerUpdated?.Invoke(_gameDuration);

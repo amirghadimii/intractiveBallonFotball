@@ -192,12 +192,16 @@ public static class GoalRushSetupWizard
         CreateBackground(root);
         CreateGoalFrame(root);
         CreateRedFlash(root);
+        CreateGreenFlash(root);
         CreateClusterParent(root);
         CreateLoadingOverlay(root);
         CreateMenuContainer(root);
         CreateHUDContainer(root);
         CreateCountdownContainer(root);
         CreateGameOverContainer(root);
+        CreatePauseOverlay(root);
+        CreateNotificationContainer(root);
+        CreateLevelUpContainer(root);
     }
 
     static void CreateBackground(Transform parent)
@@ -284,6 +288,12 @@ public static class GoalRushSetupWizard
         flash.GetComponent<Image>().raycastTarget = false;
     }
 
+    static void CreateGreenFlash(Transform parent)
+    {
+        GameObject flash = CreateImageFull("GreenFlashOverlay", parent, new Color(0, 1, 0, 0));
+        flash.GetComponent<Image>().raycastTarget = false;
+    }
+
     static void CreateClusterParent(Transform parent)
     {
         GameObject cluster = new GameObject("ClusterParent", typeof(RectTransform));
@@ -333,6 +343,9 @@ public static class GoalRushSetupWizard
             new Color(0.298f, 0.686f, 0.314f));
 
         btn.AddComponent<Shadow>();
+
+        CreateUIText("HighScoreText", menu.transform, "BEST: 0", 22,
+            new Vector2(0, -110), new Vector2(300, 40));
     }
 
     static void CreateHUDContainer(Transform parent)
@@ -355,6 +368,24 @@ public static class GoalRushSetupWizard
             new Vector2(-40, -40), new Vector2(160, 70));
         CreateUIText("TimerText", timerPanel.transform, "120s", 28,
             Vector2.zero, new Vector2(140, 50));
+
+        CreateUIText("ComboText", hud.transform, "", 24,
+            new Vector2(0, -80), new Vector2(300, 50));
+
+        GameObject diffPanel = CreateGlassPanel("DifficultyPanel", hud.transform,
+            new Vector2(0.5f, 1), new Vector2(0.5f, 1),
+            new Vector2(0, -40), new Vector2(160, 50));
+        CreateUIText("DifficultyText", diffPanel.transform, "LEVEL 0", 18,
+            Vector2.zero, new Vector2(140, 36));
+
+        GameObject pauseBtn = CreateButton("PauseButton", hud.transform,
+            "II", 24, new Vector2(0, 0), new Vector2(50, 50),
+            new Color(1, 1, 1, 0.3f));
+        RectTransform pbr = pauseBtn.GetComponent<RectTransform>();
+        pbr.anchorMin = new Vector2(1, 1);
+        pbr.anchorMax = new Vector2(1, 1);
+        pbr.anchoredPosition = new Vector2(-60, -60);
+        pbr.sizeDelta = new Vector2(50, 50);
 
         hud.SetActive(false);
     }
@@ -415,10 +446,71 @@ public static class GoalRushSetupWizard
         CreateUIText("FinalScoreText", container.transform,
             "0", 80, new Vector2(0, -10), new Vector2(400, 80));
 
+        CreateUIText("HighScoreText", container.transform,
+            "BEST: 0", 22, new Vector2(0, -70), new Vector2(300, 40));
+
+        GameObject newHighScore = CreateUIText("NewHighScoreText", container.transform,
+            "NEW HIGH SCORE!", 28, new Vector2(0, -105), new Vector2(400, 40));
+        newHighScore.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.84f, 0);
+        newHighScore.SetActive(false);
+
+        CreateUIText("AccuracyText", container.transform,
+            "Accuracy: 0%", 20, new Vector2(0, -145), new Vector2(300, 30));
+
+        CreateUIText("GoldHitsText", container.transform,
+            "Hits: 0 / 0", 20, new Vector2(0, -170), new Vector2(300, 30));
+
+        CreateUIText("ComboText", container.transform,
+            "Best Combo: 0", 20, new Vector2(0, -195), new Vector2(300, 30));
+
         CreateButton("RestartButton", container.transform,
             "PLAY AGAIN", 32, new Vector2(0, -130), new Vector2(280, 65),
             new Color(0.298f, 0.686f, 0.314f));
 
+        container.SetActive(false);
+    }
+
+    static void CreatePauseOverlay(Transform parent)
+    {
+        GameObject overlay = new GameObject("PauseOverlay", typeof(RectTransform));
+        overlay.transform.SetParent(parent, false);
+        RectTransform r = overlay.GetComponent<RectTransform>();
+        r.anchorMin = Vector2.zero;
+        r.anchorMax = Vector2.one;
+        r.sizeDelta = Vector2.zero;
+
+        CreateImageFull("PauseBg", overlay.transform, new Color(0, 0, 0, 0.7f));
+        CreateUIText("PauseText", overlay.transform, "PAUSED", 72,
+            Vector2.zero, new Vector2(400, 100)).GetComponent<TextMeshProUGUI>().color = Color.white;
+        overlay.SetActive(false);
+    }
+
+    static void CreateNotificationContainer(Transform parent)
+    {
+        GameObject container = new GameObject("NotificationContainer", typeof(RectTransform));
+        container.transform.SetParent(parent, false);
+        RectTransform r = container.GetComponent<RectTransform>();
+        r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+        r.anchoredPosition = new Vector2(0, 200);
+        r.sizeDelta = new Vector2(400, 80);
+
+        CreateUIText("NotificationText", container.transform, "", 36,
+            Vector2.zero, new Vector2(400, 80));
+        container.SetActive(false);
+    }
+
+    static void CreateLevelUpContainer(Transform parent)
+    {
+        GameObject container = new GameObject("LevelUpContainer", typeof(RectTransform));
+        container.transform.SetParent(parent, false);
+        RectTransform r = container.GetComponent<RectTransform>();
+        r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+        r.anchoredPosition = new Vector2(0, -100);
+        r.sizeDelta = new Vector2(400, 80);
+
+        GameObject txt = CreateUIText("LevelUpText", container.transform, "LEVEL 1!", 48,
+            Vector2.zero, new Vector2(400, 80));
+        txt.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.84f, 0);
         container.SetActive(false);
     }
 
@@ -511,8 +603,11 @@ public static class GoalRushSetupWizard
 
         var audioObj = new GameObject("GoalRush_AudioManager");
         audioObj.AddComponent<GoalRush.AudioManager>();
-        var audioSrc = audioObj.AddComponent<AudioSource>();
-        audioSrc.playOnAwake = false;
+        var sfxSrc = audioObj.AddComponent<AudioSource>();
+        sfxSrc.playOnAwake = false;
+        var musicSrc = audioObj.AddComponent<AudioSource>();
+        musicSrc.playOnAwake = false;
+        musicSrc.loop = true;
 
         var uiObj = new GameObject("GoalRush_UIManager");
         uiObj.AddComponent<GoalRush.UIManager>();
@@ -531,7 +626,8 @@ public static class GoalRushSetupWizard
         Directory.CreateDirectory(dir);
 
         // Always delete old prefabs to ensure fresh creation
-        string[] prefabFiles = { "/GoldTarget.prefab", "/PenaltyTarget.prefab", "/FloatingText.prefab" };
+        string[] prefabFiles = { "/GoldTarget.prefab", "/PenaltyTarget.prefab", "/FloatingText.prefab",
+            "/GoldHitParticles.prefab", "/PenaltyHitParticles.prefab" };
         foreach (var f in prefabFiles)
         {
             string p = dir + f;
@@ -542,12 +638,15 @@ public static class GoalRushSetupWizard
         CreateGoldPrefab(dir);
         CreatePenaltyPrefab(dir);
         CreateFloatingTextPrefab(dir);
+        CreateGoldHitParticles(dir);
+        CreatePenaltyHitParticles(dir);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
         // Verify prefabs were created
-        string[] checkFiles = { "/GoldTarget.prefab", "/PenaltyTarget.prefab", "/FloatingText.prefab" };
+        string[] checkFiles = { "/GoldTarget.prefab", "/PenaltyTarget.prefab", "/FloatingText.prefab",
+            "/GoldHitParticles.prefab", "/PenaltyHitParticles.prefab" };
         foreach (var f in checkFiles)
         {
             string p = dir + f;
@@ -636,6 +735,56 @@ public static class GoalRushSetupWizard
         Object.DestroyImmediate(go);
     }
 
+    static void CreateGoldHitParticles(string dir)
+    {
+        string path = dir + "/GoldHitParticles.prefab";
+        GameObject go = new GameObject("GoldHitParticles", typeof(RectTransform), typeof(ParticleSystem));
+        var ps = go.GetComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startColor = new Color(1, 0.922f, 0.231f);
+        main.startSize = 5f;
+        main.startLifetime = 0.5f;
+        main.maxParticles = 20;
+        main.duration = 0.3f;
+        main.loop = false;
+
+        var emit = ps.emission;
+        emit.rateOverTime = 0;
+        emit.SetBurst(0, new ParticleSystem.Burst(0f, 15));
+
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;
+        shape.radius = 30f;
+
+        PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+    }
+
+    static void CreatePenaltyHitParticles(string dir)
+    {
+        string path = dir + "/PenaltyHitParticles.prefab";
+        GameObject go = new GameObject("PenaltyHitParticles", typeof(RectTransform), typeof(ParticleSystem));
+        var ps = go.GetComponent<ParticleSystem>();
+        var main = ps.main;
+        main.startColor = new Color(0.957f, 0.263f, 0.212f);
+        main.startSize = 4f;
+        main.startLifetime = 0.4f;
+        main.maxParticles = 15;
+        main.duration = 0.2f;
+        main.loop = false;
+
+        var emit = ps.emission;
+        emit.rateOverTime = 0;
+        emit.SetBurst(0, new ParticleSystem.Burst(0f, 10));
+
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Circle;
+        shape.radius = 20f;
+
+        PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+    }
+
     static GameObject CreateChildText(Transform parent, string name,
         string text, float fontSize, Color color, Vector2 size)
     {
@@ -695,6 +844,11 @@ public static class GoalRushSetupWizard
         {
             LogWire(so_ui, "_scoreText", FindChildRecursive(hud.transform, "ScoreText")?.GetComponent<TextMeshProUGUI>());
             LogWire(so_ui, "_timerText", FindChildRecursive(hud.transform, "TimerText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_comboText", FindChildRecursive(hud.transform, "ComboText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_difficultyText", FindChildRecursive(hud.transform, "DifficultyText")?.GetComponent<TextMeshProUGUI>());
+
+            var pauseBtn = FindChildRecursive(hud.transform, "PauseButton")?.GetComponent<Button>();
+            if (pauseBtn != null) LogWire(so_ui, "_pauseButton", pauseBtn);
         }
         else Debug.LogWarning("HUDContainer not found!");
 
@@ -704,15 +858,31 @@ public static class GoalRushSetupWizard
 
         var gameOver = FindChildRecursive(mainCanvas.transform, "GameOverContainer");
         if (gameOver != null)
+        {
             LogWire(so_ui, "_finalScoreText", FindChildRecursive(gameOver.transform, "FinalScoreText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_highScoreText", FindChildRecursive(gameOver.transform, "HighScoreText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_newHighScoreText", FindChildRecursive(gameOver.transform, "NewHighScoreText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_accuracyText", FindChildRecursive(gameOver.transform, "AccuracyText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_gameOverComboText", FindChildRecursive(gameOver.transform, "ComboText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_gameOverGoldHitsText", FindChildRecursive(gameOver.transform, "GoldHitsText")?.GetComponent<TextMeshProUGUI>());
+        }
 
         var menu = FindChildRecursive(mainCanvas.transform, "MenuContainer");
         if (menu != null)
+        {
             LogWire(so_ui, "_startButton", FindChildRecursive(menu.transform, "StartButton")?.GetComponent<Button>());
+            LogWire(so_ui, "_menuHighScoreText", FindChildRecursive(menu.transform, "HighScoreText")?.GetComponent<TextMeshProUGUI>());
+        }
         if (gameOver != null)
             LogWire(so_ui, "_restartButton", FindChildRecursive(gameOver.transform, "RestartButton")?.GetComponent<Button>());
 
         LogWire(so_ui, "_redFlashImage", FindChildRecursive(mainCanvas.transform, "RedFlashOverlay")?.GetComponent<Image>());
+        LogWire(so_ui, "_greenFlashImage", FindChildRecursive(mainCanvas.transform, "GreenFlashOverlay")?.GetComponent<Image>());
+        LogWire(so_ui, "_pauseOverlay", FindChildRecursive(mainCanvas.transform, "PauseOverlay"));
+        LogWire(so_ui, "_notificationContainer", FindChildRecursive(mainCanvas.transform, "NotificationContainer"));
+        LogWire(so_ui, "_notificationText", FindChildRecursive(mainCanvas.transform, "NotificationText")?.GetComponent<TextMeshProUGUI>());
+        LogWire(so_ui, "_levelUpContainer", FindChildRecursive(mainCanvas.transform, "LevelUpContainer"));
+        LogWire(so_ui, "_levelUpText", FindChildRecursive(mainCanvas.transform, "LevelUpText")?.GetComponent<TextMeshProUGUI>());
         LogWire(so_ui, "_mainCamera", Camera.main);
         LogWire(so_ui, "_floatingCanvas", floatingCanvas?.GetComponent<Canvas>());
 
@@ -748,15 +918,48 @@ public static class GoalRushSetupWizard
         if (audio != null)
         {
             var so_audio = new SerializedObject(audio);
-            LogWire(so_audio, "_sfxSource", audio.GetComponent<AudioSource>());
+            var sources = audio.GetComponents<AudioSource>();
+            if (sources.Length > 0) LogWire(so_audio, "_sfxSource", sources[0]);
+            if (sources.Length > 1) LogWire(so_audio, "_musicSource", sources[1]);
             so_audio.ApplyModifiedProperties();
             Debug.Log("<color=green>AudioManager wired.</color>");
         }
 
+        // Wire TargetInteraction on prefabs
+        string goldHitParticlesPath = "Assets/FotballGame/FotballEvent/Prefabs/GoldHitParticles.prefab";
+        string penaltyHitParticlesPath = "Assets/FotballGame/FotballEvent/Prefabs/PenaltyHitParticles.prefab";
+        var goldHitPs = AssetDatabase.LoadAssetAtPath<ParticleSystem>(goldHitParticlesPath);
+        var penaltyHitPs = AssetDatabase.LoadAssetAtPath<ParticleSystem>(penaltyHitParticlesPath);
+
+        var goldPrefabLoaded = AssetDatabase.LoadAssetAtPath<GameObject>(goldPath);
+        if (goldPrefabLoaded != null)
+        {
+            var so_gold = new SerializedObject(goldPrefabLoaded);
+            var goldInteract = goldPrefabLoaded.GetComponent<GoalRush.TargetInteraction>();
+            if (goldInteract != null)
+            {
+                var so_gi = new SerializedObject(goldInteract);
+                if (goldHitPs != null) LogWire(so_gi, "_successParticles", goldHitPs);
+                so_gi.ApplyModifiedProperties();
+            }
+        }
+
+        var penaltyPrefabLoaded = AssetDatabase.LoadAssetAtPath<GameObject>(penaltyPath);
+        if (penaltyPrefabLoaded != null)
+        {
+            var penaltyInteract = penaltyPrefabLoaded.GetComponent<GoalRush.TargetInteraction>();
+            if (penaltyInteract != null)
+            {
+                var so_pi = new SerializedObject(penaltyInteract);
+                if (penaltyHitPs != null) LogWire(so_pi, "_failParticles", penaltyHitPs);
+                so_pi.ApplyModifiedProperties();
+            }
+        }
+
         Debug.Log("<color=cyan>=== All references wired successfully! ===</color>");
 
-        // Note: GameManager has no scene references to wire (only config values)
         Debug.Log("<color=yellow>Note: GameManager has only config values (no scene references needed).</color>");
+        Debug.Log("<color=yellow>Note: Assign audio clips and BGM to AudioManager manually in Inspector.</color>");
     }
 
     static void LogWire(SerializedObject so, string field, Object value)

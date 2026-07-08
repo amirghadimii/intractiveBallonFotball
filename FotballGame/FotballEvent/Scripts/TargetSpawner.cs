@@ -1,6 +1,8 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using DG.Tweening;
+using UnityEngine.UI;
 
 namespace GoalRush
 {
@@ -9,6 +11,7 @@ namespace GoalRush
         [Header("Prefab References")]
         [SerializeField] private GameObject _goldTargetPrefab;
         [SerializeField] private GameObject _penaltyTargetPrefab;
+        [SerializeField] private GameObject _ringEffectPrefab;
 
         [Header("Cluster Parent")]
         [SerializeField] private RectTransform _clusterParent;
@@ -23,12 +26,15 @@ namespace GoalRush
 
         private GameObject _currentGold;
         private List<GameObject> _currentPenalties = new List<GameObject>();
+        private Canvas _mainCanvas;
 
         private void Start()
         {
             var gm = GameManager.Instance;
             if (gm != null)
                 gm.OnStateChanged += OnGameStateChanged;
+
+            _mainCanvas = GetComponentInParent<Canvas>() ?? FindFirstObjectByType<Canvas>();
         }
 
         private void OnDestroy()
@@ -51,11 +57,15 @@ namespace GoalRush
 
         public void MoveCluster()
         {
+            Vector2 oldPos = _clusterParent.anchoredPosition;
             ClearPenalties();
             _clusterParent.gameObject.SetActive(true);
 
             Vector2 newPos = GetRandomPositionInGoal();
             _clusterParent.anchoredPosition = newPos;
+
+            SpawnRingEffect(oldPos);
+            PlayClusterMoveTween(oldPos, newPos);
 
             if (_currentGold != null)
             {
@@ -133,11 +143,7 @@ namespace GoalRush
 
                 TextMeshProUGUI label = penalty.GetComponentInChildren<TextMeshProUGUI>();
                 if (label != null)
-                {
-                    int basePenalty = Mathf.Abs(gm.PenaltyTargetScore);
-                    int displayValue = basePenalty + Random.Range(0, 7);
-                    label.text = $"-{displayValue}";
-                }
+                    label.text = $"{gm.PenaltyTargetScore}";
 
                 _currentPenalties.Add(penalty.gameObject);
             }
@@ -187,6 +193,30 @@ namespace GoalRush
             }
             if (_clusterParent != null)
                 _clusterParent.gameObject.SetActive(false);
+        }
+
+        private void SpawnRingEffect(Vector2 position)
+        {
+            if (_ringEffectPrefab == null && _mainCanvas != null)
+            {
+                GameObject ring = new GameObject("MoveRing", typeof(RectTransform), typeof(Image));
+                ring.transform.SetParent(_mainCanvas.transform, false);
+                RectTransform rr = ring.GetComponent<RectTransform>();
+                rr.sizeDelta = new Vector2(60, 60);
+                rr.anchoredPosition = position;
+                Image rim = ring.GetComponent<Image>();
+                rim.color = new Color(1, 1, 1, 0.3f);
+                rim.raycastTarget = false;
+                rim.DOFade(0f, 0.4f);
+                rr.DOSizeDelta(new Vector2(120, 120), 0.4f).SetEase(Ease.OutCubic);
+                Destroy(ring, 0.5f);
+            }
+        }
+
+        private void PlayClusterMoveTween(Vector2 from, Vector2 to)
+        {
+            _clusterParent.localScale = Vector3.one * 0.85f;
+            _clusterParent.DOScale(Vector3.one, 0.2f).SetEase(Ease.OutBack);
         }
     }
 }
