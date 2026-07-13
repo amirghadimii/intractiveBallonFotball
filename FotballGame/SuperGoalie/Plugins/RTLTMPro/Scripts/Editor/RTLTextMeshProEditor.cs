@@ -2,27 +2,25 @@
 using UnityEditor;
 using UnityEngine;
 
-#if TMP_VERSION_2_1_0_OR_NEWER
-using TMP_UiEditorPanel = TMPro.EditorUtilities.TMP_EditorPanelUI;
-#else
-using TMP_UiEditorPanel = TMPro.EditorUtilities.TMP_UiEditorPanel;
-#endif
-
 namespace RTLTMPro
 {
     [CustomEditor(typeof(RTLTextMeshPro)), CanEditMultipleObjects]
     public class RTLTextMeshProEditor : TMP_UiEditorPanel
     {
         private SerializedProperty originalTextProp;
+        private SerializedProperty havePropertiesChangedProp;
+        private SerializedProperty inputSourceProp;
+        private SerializedProperty isInputPasingRequiredProp;
         private SerializedProperty preserveNumbersProp;
         private SerializedProperty farsiProp;
         private SerializedProperty fixTagsProp;
         private SerializedProperty forceFixProp;
 
+        private bool changed;
         private bool foldout;
         private RTLTextMeshPro tmpro;
 
-        protected override void OnEnable()
+        private new void OnEnable()
         {
             base.OnEnable();
             foldout = true;
@@ -31,13 +29,16 @@ namespace RTLTMPro
             fixTagsProp = serializedObject.FindProperty("fixTags");
             forceFixProp = serializedObject.FindProperty("forceFix");
             originalTextProp = serializedObject.FindProperty("originalText");
+            havePropertiesChangedProp = serializedObject.FindProperty("m_havePropertiesChanged");
+            inputSourceProp = serializedObject.FindProperty("m_inputSource");
+            isInputPasingRequiredProp = serializedObject.FindProperty("m_isInputParsingRequired");
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            tmpro = (RTLTextMeshPro)target;
-
+            tmpro = (RTLTextMeshPro) target;
+            
             EditorGUILayout.Space();
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(originalTextProp, new GUIContent("RTL Text Input Box"));
@@ -45,6 +46,13 @@ namespace RTLTMPro
             ListenForZeroWidthNoJoiner();
 
             if (EditorGUI.EndChangeCheck())
+            {
+                inputSourceProp.enumValueIndex = 0;
+                isInputPasingRequiredProp.boolValue = true;
+                changed = true;
+            }
+
+            if (changed)
                 OnChanged();
 
             serializedObject.ApplyModifiedProperties();
@@ -57,13 +65,15 @@ namespace RTLTMPro
                 DrawOptions();
 
                 if (GUILayout.Button("Re-Fix"))
-                    m_HavePropertiesChanged = true;
+                    changed = true;
 
                 if (EditorGUI.EndChangeCheck())
-                    m_HavePropertiesChanged = true;
+                {
+                    changed = true;
+                }
             }
 
-            if (m_HavePropertiesChanged)
+            if(changed)
                 OnChanged();
 
             serializedObject.ApplyModifiedProperties();
@@ -72,9 +82,8 @@ namespace RTLTMPro
         protected void OnChanged()
         {
             tmpro.UpdateText();
-            m_HavePropertiesChanged = false;
-            m_TextComponent.havePropertiesChanged = true;
-            m_TextComponent.ComputeMarginSize();
+            havePropertiesChangedProp.boolValue = true;
+            changed = false;
             EditorUtility.SetDirty(target);
         }
 
@@ -94,7 +103,7 @@ namespace RTLTMPro
 
         protected virtual void ListenForZeroWidthNoJoiner()
         {
-            var editor = (TextEditor)GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
+            var editor = (TextEditor) GUIUtility.GetStateObject(typeof(TextEditor), GUIUtility.keyboardControl);
 
             bool shortcutPressed = (Event.current.modifiers & EventModifiers.Control) != 0 &&
                                    (Event.current.modifiers & EventModifiers.Shift) != 0 &&
@@ -103,7 +112,7 @@ namespace RTLTMPro
 
             if (!shortcutPressed) return;
 
-            originalTextProp.stringValue = originalTextProp.stringValue.Insert(editor.cursorIndex, ((char)SpecialCharacters.ZeroWidthNoJoiner).ToString());
+            originalTextProp.stringValue = originalTextProp.stringValue.Insert(editor.cursorIndex, ((char) GeneralLetters.ZeroWidthNoJoiner).ToString());
             editor.selectIndex++;
             editor.cursorIndex++;
             Event.current.Use();

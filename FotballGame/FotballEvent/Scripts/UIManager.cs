@@ -3,6 +3,7 @@ using TMPro;
 using DG.Tweening;
 using System.Collections;
 using UnityEngine.UI;
+using UPersian.Components;
 
 namespace GoalRush
 {
@@ -10,23 +11,24 @@ namespace GoalRush
     {
         [Header("HUD")]
         [SerializeField] private GameObject _hudContainer;
-        [SerializeField] private TextMeshProUGUI _scoreText;
-        [SerializeField] private TextMeshProUGUI _timerText;
-        [SerializeField] private TextMeshProUGUI _comboText;
-        [SerializeField] private TextMeshProUGUI _difficultyText;
+        [SerializeField] private RtlText _scoreText;
+        [SerializeField] private RtlText _hudHitsText;
+        [SerializeField] private RtlText _timerText;
+        [SerializeField] private RtlText _comboText;
+        [SerializeField] private RtlText _difficultyText;
 
         [Header("Menu")]
         [SerializeField] private GameObject _menuContainer;
-        [SerializeField] private TextMeshProUGUI _menuTitleText;
-        [SerializeField] private TextMeshProUGUI _menuHighScoreText;
+        [SerializeField] private RtlText _menuTitleText;
+        [SerializeField] private RtlText _menuHighScoreText;
         [SerializeField] private Button _startButton;
 
         [Header("Countdown")]
         [SerializeField] private GameObject _countdownContainer;
-        [SerializeField] private TextMeshProUGUI _countdownText;
+        [SerializeField] private RtlText _countdownText;
 
         [Header("Floating Text")]
-        [SerializeField] private TextMeshProUGUI _floatingTextPrefab;
+        [SerializeField] private RtlText _floatingTextPrefab;
         [SerializeField] private Canvas _floatingCanvas;
 
         [Header("Screen Effects")]
@@ -41,13 +43,13 @@ namespace GoalRush
 
         [Header("Game Over")]
         [SerializeField] private GameObject _gameOverContainer;
-        [SerializeField] private TextMeshProUGUI _finalScoreText;
-        [SerializeField] private TextMeshProUGUI _gameOverTitleText;
-        [SerializeField] private TextMeshProUGUI _highScoreText;
-        [SerializeField] private TextMeshProUGUI _newHighScoreText;
-        [SerializeField] private TextMeshProUGUI _accuracyText;
-        [SerializeField] private TextMeshProUGUI _gameOverComboText;
-        [SerializeField] private TextMeshProUGUI _gameOverGoldHitsText;
+        [SerializeField] private RtlText _finalScoreText;
+        [SerializeField] private RtlText _gameOverTitleText;
+        [SerializeField] private RtlText _highScoreText;
+        [SerializeField] private RtlText _newHighScoreText;
+        [SerializeField] private RtlText _accuracyText;
+        [SerializeField] private RtlText _gameOverComboText;
+        [SerializeField] private RtlText _gameOverGoldHitsText;
         [SerializeField] private Button _restartButton;
 
         [Header("Pause")]
@@ -56,11 +58,14 @@ namespace GoalRush
 
         [Header("Notifications")]
         [SerializeField] private GameObject _notificationContainer;
-        [SerializeField] private TextMeshProUGUI _notificationText;
+        [SerializeField] private RtlText _notificationText;
 
         [Header("Difficulty Level Up")]
         [SerializeField] private GameObject _levelUpContainer;
-        [SerializeField] private TextMeshProUGUI _levelUpText;
+        [SerializeField] private RtlText _levelUpText;
+
+        [Header("High Score Celebration")]
+        [SerializeField] private ParticleSystem _celebrationParticles;
 
         [Header("Transition")]
         [SerializeField] private float _transitionDuration = 0.3f;
@@ -72,6 +77,8 @@ namespace GoalRush
         private Tween _scoreTween;
         private bool _isPaused;
         private Coroutine _lowTimeCoroutine;
+        private Tween _timerPulseTween;
+        private Coroutine _tickCoroutine;
 
         private void Awake()
         {
@@ -105,7 +112,7 @@ namespace GoalRush
                 _redFlashImage.color = new Color(1, 0, 0, 0);
 
             if (_menuHighScoreText != null)
-                _menuHighScoreText.text = $"BEST: {GameManager.Instance.HighScore}";
+                _menuHighScoreText.text = $"رکورد: {GameManager.Instance.HighScore}";
 
             if (_startButton != null)
                 _startButton.onClick.AddListener(OnStartClicked);
@@ -213,12 +220,21 @@ namespace GoalRush
                 StopCoroutine(_lowTimeCoroutine);
                 _lowTimeCoroutine = null;
             }
+            if (_tickCoroutine != null)
+            {
+                StopCoroutine(_tickCoroutine);
+                _tickCoroutine = null;
+            }
+            StopTimerPulse();
 
             if (state == GameState.Playing)
             {
                 _currentDisplayScore = 0;
                 _scoreText.text = "0";
                 _timerText.color = Color.white;
+
+                if (_hudHitsText != null)
+                    _hudHitsText.text = "تعداد گل: 0";
 
                 if (_comboText != null)
                 {
@@ -227,7 +243,7 @@ namespace GoalRush
                 }
                 if (_difficultyText != null)
                 {
-                    _difficultyText.text = "LEVEL 0";
+                    _difficultyText.text = "سطح 0";
                     _difficultyText.transform.localScale = Vector3.one;
                 }
             }
@@ -252,7 +268,7 @@ namespace GoalRush
                 _finalScoreText.text = gm.Score.ToString();
 
             if (_highScoreText != null)
-                _highScoreText.text = $"BEST: {gm.HighScore}";
+                _highScoreText.text = $"رکورد: {gm.HighScore}";
 
             if (_newHighScoreText != null)
             {
@@ -264,17 +280,18 @@ namespace GoalRush
                     Color gold = new Color(1, 0.84f, 0);
                     _newHighScoreText.color = gold;
                     _newHighScoreText.DOColor(new Color(1, 1, 0.4f), 0.6f).SetLoops(-1, LoopType.Yoyo);
+                    PlayHighScoreCelebration();
                 }
             }
 
             if (_accuracyText != null)
-                _accuracyText.text = $"Accuracy: {gm.Accuracy:F0}%";
+                _accuracyText.text = $"دقت: {gm.Accuracy:F0}%";
 
             if (_gameOverComboText != null)
-                _gameOverComboText.text = $"Best Combo: {gm.Combo}";
+                _gameOverComboText.text = $"بهترین ترکیب: {gm.Combo}";
 
             if (_gameOverGoldHitsText != null)
-                _gameOverGoldHitsText.text = $"Hits: {gm.GoldHits} / {gm.TotalClicks}";
+                _gameOverGoldHitsText.text = $"ضربات: {gm.GoldHits} / {gm.TotalClicks}";
 
             _gameOverContainer.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
         }
@@ -282,6 +299,14 @@ namespace GoalRush
         private void UpdateScore(int score)
         {
             if (_scoreText == null) return;
+
+            if (_hudHitsText != null)
+            {
+                var gm = GameManager.Instance;
+                if (gm != null)
+                    _hudHitsText.text = $"تعداد گل: {gm.GoldHits}";
+            }
+
             _scoreTween?.Kill();
             _scoreTween = DOVirtual.Int(_currentDisplayScore, score, 0.25f, v =>
             {
@@ -298,25 +323,30 @@ namespace GoalRush
         {
             if (_timerText == null) return;
             int seconds = Mathf.CeilToInt(time);
-            _timerText.text = $"{seconds}s";
+            _timerText.text = $"{seconds} ثانیه";
 
             if (time <= 30f && time > 10f)
             {
                 float t = (time - 10f) / 20f;
-                _timerText.color = Color.Lerp(new Color(1, 0.64f, 0), Color.white, t);
-                _timerText.transform.DOPunchScale(Vector3.one * 0.05f, 0.5f, 2, 0.3f);
+                _timerText.color = Color.Lerp(Color.white, new Color(1, 0.64f, 0), 1f - t);
+
+                StartTimerPulse(1.05f, 1f);
+                StartTickCoroutine();
 
                 if (_notificationContainer != null && _notificationText != null && seconds == 30)
                 {
-                    _notificationText.text = "HURRY UP!";
+                    _notificationText.text = "عجله کن!";
                     _notificationText.color = new Color(1, 0.64f, 0);
                     ShowNotification();
                 }
             }
             else if (time <= 10f && time > 0f)
             {
-                _timerText.color = Color.red;
-                _timerText.transform.DOPunchScale(Vector3.one * 0.1f, 0.5f, 3, 0.3f);
+                float t = time / 10f;
+                _timerText.color = Color.Lerp(Color.red, new Color(1, 0.64f, 0), t);
+
+                StartTimerPulse(1.15f, 0.5f);
+                StartTickCoroutine();
 
                 if (_lowTimeCoroutine == null)
                 {
@@ -324,6 +354,44 @@ namespace GoalRush
                     AudioManager.Instance?.PlayLowTime();
                 }
             }
+            else if (time > 30f)
+            {
+                _timerText.color = Color.white;
+                StopTimerPulse();
+            }
+        }
+
+        private void StartTimerPulse(float maxScale, float duration)
+        {
+            if (_timerPulseTween != null && _timerPulseTween.IsActive()) return;
+            _timerPulseTween?.Kill();
+            _timerPulseTween = _timerText.transform.DOScale(maxScale, duration)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+
+        private void StopTimerPulse()
+        {
+            _timerPulseTween?.Kill();
+            _timerPulseTween = null;
+            if (_timerText != null)
+                _timerText.transform.localScale = Vector3.one;
+        }
+
+        private void StartTickCoroutine()
+        {
+            if (_tickCoroutine != null) return;
+            _tickCoroutine = StartCoroutine(TickRoutine());
+        }
+
+        private IEnumerator TickRoutine()
+        {
+            while (GameManager.Instance.RemainingTime > 0f && GameManager.Instance.State == GameState.Playing)
+            {
+                AudioManager.Instance?.PlayTimerTick();
+                yield return new WaitForSeconds(1f);
+            }
+            _tickCoroutine = null;
         }
 
         private IEnumerator LowTimePulse()
@@ -358,7 +426,7 @@ namespace GoalRush
             else if (tick == 0)
             {
                 AudioManager.Instance?.PlayCountdownGo();
-                _countdownText.text = "GO!";
+                _countdownText.text = "برو!";
                 _countdownText.transform.localScale = Vector3.one * 1.5f;
                 _countdownText.transform.DOScale(Vector3.one * 0.8f, 0.3f).SetEase(Ease.OutBack);
                 UIManager.Instance?.ScreenShake(0.15f, 5f);
@@ -377,7 +445,7 @@ namespace GoalRush
         {
             if (_floatingTextPrefab == null || _floatingCanvas == null) return;
 
-            TextMeshProUGUI floating = Instantiate(_floatingTextPrefab, _floatingCanvas.transform);
+            RtlText floating = Instantiate(_floatingTextPrefab, _floatingCanvas.transform);
             floating.text = text;
             floating.color = color;
             floating.rectTransform.position = screenPos;
@@ -417,13 +485,27 @@ namespace GoalRush
             _greenFlashImage.DOFade(0f, 0.2f).SetEase(Ease.OutCubic);
         }
 
+        public void PlayHighScoreCelebration()
+        {
+            FlashGreen();
+            ScreenShake(0.3f, 5f);
+
+            if (_celebrationParticles != null)
+            {
+                Vector3 center = new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0f);
+                var ps = Instantiate(_celebrationParticles, center, Quaternion.identity);
+                ps.Play();
+                Destroy(ps.gameObject, ps.main.duration + 1f);
+            }
+        }
+
         private void OnComboChanged(int combo)
         {
             if (_comboText == null) return;
 
             if (combo > 1)
             {
-                _comboText.text = $"COMBO x{combo}";
+                _comboText.text = $"ترکیب x{combo}";
                 _comboText.transform.DOKill();
                 _comboText.transform.localScale = Vector3.one * 0.8f;
                 _comboText.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
@@ -438,7 +520,7 @@ namespace GoalRush
         private void OnDifficultyStepChanged(int step)
         {
             if (_difficultyText == null || step < 0) return;
-            _difficultyText.text = $"LEVEL {step}";
+            _difficultyText.text = $"سطح {step}";
             _difficultyText.transform.DOKill();
             _difficultyText.transform.localScale = Vector3.one * 0.7f;
             _difficultyText.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
@@ -447,7 +529,7 @@ namespace GoalRush
 
             if (_levelUpContainer != null && _levelUpText != null)
             {
-                _levelUpText.text = $"LEVEL {step}!";
+                _levelUpText.text = $"سطح {step}!";
                 _levelUpContainer.SetActive(true);
                 _levelUpContainer.transform.localScale = Vector3.one * 1.3f;
                 _levelUpContainer.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack)

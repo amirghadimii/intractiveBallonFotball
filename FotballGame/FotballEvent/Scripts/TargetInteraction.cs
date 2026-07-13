@@ -24,6 +24,15 @@ namespace GoalRush
         [SerializeField] private float _pulseScale = 1.05f;
         [SerializeField] private float _pulseDuration = 0.75f;
 
+        [Header("Idle Animation")]
+        [SerializeField] private float _idleDelay = 3f;
+        [SerializeField] private float _idlePulseScale = 1.08f;
+        [SerializeField] private float _idlePulseDuration = 0.5f;
+
+        [Header("Wave Movement")]
+        [SerializeField] private float _waveAmplitudePerStep = 2f;
+        [SerializeField] private float _waveFrequency = 1.2f;
+
         [Header("Hover")]
         [SerializeField] private float _hoverScale = 1.15f;
         [SerializeField] private float _hoverDuration = 0.15f;
@@ -36,6 +45,13 @@ namespace GoalRush
         private Vector3 _baseScale = Vector3.one;
         private bool _isHovering;
 
+        private float _lastHitTime;
+        private Tween _idleTween;
+        private bool _isIdling;
+
+        private Tween _waveTween;
+        private Vector2 _baseAnchoredPosition;
+
         private void Awake()
         {
             _rectTransform = GetComponent<RectTransform>();
@@ -47,15 +63,62 @@ namespace GoalRush
         private void Start()
         {
             _baseScale = _rectTransform.localScale;
+            _lastHitTime = Time.time;
+            _baseAnchoredPosition = _rectTransform.anchoredPosition;
+
             if (_targetType == TargetType.Gold)
                 StartPulse();
             else
                 AnimateEntry();
+
+            SetupWave();
+            var gm = GameManager.Instance;
+            if (gm != null)
+                gm.OnDifficultyStepChanged += OnDifficultyStepChanged;
         }
 
         private void OnDestroy()
         {
             _pulseTween?.Kill();
+            _idleTween?.Kill();
+            _waveTween?.Kill();
+            if (GameManager.Instance != null)
+                GameManager.Instance.OnDifficultyStepChanged -= OnDifficultyStepChanged;
+        }
+
+        private void Update()
+        {
+            if (!_isActive || _targetType != TargetType.Gold) return;
+            if (_isHovering) return;
+
+            if (!_isIdling && Time.time - _lastHitTime > _idleDelay)
+                StartIdlePulse();
+        }
+
+        private void OnDifficultyStepChanged(int step)
+        {
+            SetupWave();
+        }
+
+        private void SetupWave()
+        {
+            var gm = GameManager.Instance;
+            if (gm == null) return;
+
+            int step = gm.CurrentDifficultyStep;
+            float amp = step * _waveAmplitudePerStep;
+            if (amp < 0.5f)
+            {
+                _waveTween?.Kill();
+                _rectTransform.anchoredPosition = _baseAnchoredPosition;
+                return;
+            }
+
+            _waveTween?.Kill();
+            _rectTransform.anchoredPosition = new Vector2(_baseAnchoredPosition.x, _baseAnchoredPosition.y - amp);
+            _waveTween = _rectTransform.DOAnchorPosY(_baseAnchoredPosition.y + amp, _waveFrequency)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
         }
 
         private void StartPulse()
@@ -64,6 +127,26 @@ namespace GoalRush
             _pulseTween = _rectTransform.DOScale(_baseScale * _pulseScale, _pulseDuration)
                 .SetEase(Ease.InOutSine)
                 .SetLoops(-1, LoopType.Yoyo);
+        }
+
+        private void StartIdlePulse()
+        {
+            _isIdling = true;
+            _pulseTween?.Kill();
+            _idleTween?.Kill();
+            _idleTween = _rectTransform.DOScale(_baseScale * _idlePulseScale, _idlePulseDuration)
+                .SetEase(Ease.InOutSine)
+                .SetLoops(-1, LoopType.Yoyo);
+        }
+
+        private void StopIdlePulse()
+        {
+            if (!_isIdling) return;
+            _isIdling = false;
+            _idleTween?.Kill();
+            _lastHitTime = Time.time;
+            if (_isActive && _targetType == TargetType.Gold && !_isHovering)
+                StartPulse();
         }
 
         private void AnimateEntry()
@@ -76,6 +159,7 @@ namespace GoalRush
         {
             if (!_isActive) return;
             _isHovering = true;
+            StopIdlePulse();
             _pulseTween?.Pause();
             _rectTransform.DOScale(_baseScale * _hoverScale, _hoverDuration).SetEase(Ease.OutQuad);
         }
@@ -108,6 +192,7 @@ namespace GoalRush
             _isActive = false;
             _isHovering = false;
             _pulseTween?.Kill();
+            StopIdlePulse();
 
             GameManager.Instance.AddScore(_scoreValue);
             GameManager.Instance.RecordGoldHit();
@@ -115,36 +200,37 @@ namespace GoalRush
             UIManager.Instance?.ShowFloatingText(
                 $"+{_scoreValue}", new Color(0.298f, 0.686f, 0.314f), clickPos
             );
-            PlayParticles(_successParticles);
+            PlayParticles(_successParticles, clickPos);
 
             _rectTransform.DOScale(_baseScale * _pulseScale * 1.3f, 0.15f)
                 .SetEase(Ease.OutQuad)
                 .OnComplete(() =>
                 {
-                    _spawner?.MoveCluster();
+                    _spawner?.MoveCluster(clickPos);
                     Reactivate();
                 });
         }
 
         private void OnPenaltyHit(Vector2 clickPos)
         {
+            _lastHitTime = Time.time;
             GameManager.Instance.AddScore(_scoreValue);
             GameManager.Instance.RecordPenaltyHit();
             AudioManager.Instance?.PlayPenaltyHit();
             UIManager.Instance?.ShowFloatingText(
                 $"{_scoreValue}", new Color(0.957f, 0.263f, 0.212f), clickPos
             );
-            PlayParticles(_failParticles);
+            PlayParticles(_failParticles, clickPos);
             UIManager.Instance?.ScreenShake();
             UIManager.Instance?.FlashRed();
 
             _rectTransform.DOShakeScale(0.2f, 0.3f, 10, 90);
         }
 
-        private void PlayParticles(ParticleSystem ps)
+        private void PlayParticles(ParticleSystem ps, Vector2 screenPos)
         {
             if (ps == null) return;
-            var instance = Instantiate(ps, transform.position, Quaternion.identity);
+            var instance = Instantiate(ps, screenPos, Quaternion.identity);
             instance.Play();
             Destroy(instance.gameObject, instance.main.duration + 0.5f);
         }
@@ -159,7 +245,10 @@ namespace GoalRush
         public void Reactivate()
         {
             _isActive = true;
-            _baseScale = transform.localScale;
+            _lastHitTime = Time.time;
+            _baseAnchoredPosition = _rectTransform.anchoredPosition;
+            _waveTween?.Kill();
+            SetupWave();
             if (_targetType == TargetType.Gold)
                 StartPulse();
         }

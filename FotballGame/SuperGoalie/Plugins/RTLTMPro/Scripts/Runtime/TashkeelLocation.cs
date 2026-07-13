@@ -1,13 +1,13 @@
 namespace RTLTMPro
 {
-    public struct TashkeelLocation
+    public class TashkeelLocation
     {
         public char Tashkeel { get; set; }
         public int Position { get; set; }
 
-        public TashkeelLocation(TashkeelCharacters tashkeel, int position) : this()
+        public TashkeelLocation(char tashkeel, int position)
         {
-            Tashkeel = (char) tashkeel;
+            Tashkeel = tashkeel;
             Position = position;
         }
     }

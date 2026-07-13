@@ -18,6 +18,7 @@ namespace GoalRush
         [SerializeField] private AudioClip _levelUpClip;
         [SerializeField] private AudioClip _comboClip;
         [SerializeField] private AudioClip _lowTimeClip;
+        [SerializeField] private AudioClip _timerTickClip;
 
         [Header("Music")]
         [SerializeField] private AudioClip _bgmClip;
@@ -96,6 +97,11 @@ namespace GoalRush
         public void PlayLowTime()
         {
             Play(_lowTimeClip);
+        }
+
+        public void PlayTimerTick()
+        {
+            Play(_timerTickClip);
         }
 
         private void Play(AudioClip clip)

@@ -84,7 +84,7 @@ namespace RTLTMPro
                 int curChar = input.Get(i);
                 if (Char32Utils.IsUnicode16Char(curChar) && TashkeelCharactersSet.Contains((char)curChar))
                 {
-                    TashkeelLocations.Add(new TashkeelLocation((TashkeelCharacters)curChar, i));
+                    TashkeelLocations.Add(new TashkeelLocation((char)curChar, i));
                 }
                 else
                 {

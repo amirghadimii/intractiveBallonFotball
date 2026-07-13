@@ -72,7 +72,7 @@ namespace RTLTMPro
 
                 if (iChar < 0xFFFF && TextUtils.IsGlyphFixedArabicCharacter((char)iChar))
                 {
-                    char converted = GlyphTable.Convert((char)iChar);
+                    char converted = (char)GlyphTable.Convert(iChar);
 
                     if (IsMiddleLetter(input, i))
                     {

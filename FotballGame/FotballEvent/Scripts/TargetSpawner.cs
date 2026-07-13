@@ -55,16 +55,17 @@ namespace GoalRush
             }
         }
 
-        public void MoveCluster()
+        public void MoveCluster(Vector2 clickScreenPos)
         {
             Vector2 oldPos = _clusterParent.anchoredPosition;
+
             ClearPenalties();
             _clusterParent.gameObject.SetActive(true);
 
             Vector2 newPos = GetRandomPositionInGoal();
             _clusterParent.anchoredPosition = newPos;
 
-            SpawnRingEffect(oldPos);
+            SpawnRingEffect(clickScreenPos);
             PlayClusterMoveTween(oldPos, newPos);
 
             if (_currentGold != null)
@@ -120,22 +121,37 @@ namespace GoalRush
             if (gm == null) return;
             int count = gm.CurrentPenaltyCount;
             float penaltyScale = gm.PenaltyTargetScale;
+            float goldScale = gm.GoldTargetScale;
             float angleStep = 360f / count;
+
+            float goldHalf = _goldTargetPrefab.GetComponent<RectTransform>().sizeDelta.x * 0.5f * goldScale;
+            float penaltyHalf = _penaltyTargetPrefab.GetComponent<RectTransform>().sizeDelta.x * 0.5f * penaltyScale;
+            float penaltyDiameter = penaltyHalf * 2;
+            float minRadius = goldHalf + penaltyHalf + 15f;
+            float minDist = penaltyDiameter + 10f;
+
+            List<Vector2> placedPositions = new List<Vector2>();
 
             for (int i = 0; i < count; i++)
             {
-                float angle = i * angleStep + Random.Range(0f, _angleJitter * Mathf.Rad2Deg);
-                float radius = (_baseRadius * penaltyScale) + Random.Range(0f, _radiusRandomRange);
-                float rad = angle * Mathf.Deg2Rad;
+                Vector2 pos;
+                int attempts = 0;
+                int maxAttempts = 20;
 
-                Vector2 penaltyPos = new Vector2(
-                    Mathf.Cos(rad) * radius,
-                    Mathf.Sin(rad) * radius
-                );
+                do
+                {
+                    float angle = i * angleStep + Random.Range(-_angleJitter * Mathf.Rad2Deg, _angleJitter * Mathf.Rad2Deg);
+                    float radius = Mathf.Max(minRadius, _baseRadius * penaltyScale) + Random.Range(0f, _radiusRandomRange);
+                    float rad = angle * Mathf.Deg2Rad;
+                    pos = new Vector2(Mathf.Cos(rad) * radius, Mathf.Sin(rad) * radius);
+                    attempts++;
+                } while (TooClose(pos, placedPositions, minDist) && attempts < maxAttempts);
+
+                placedPositions.Add(pos);
 
                 GameObject penaltyObj = Object.Instantiate(_penaltyTargetPrefab, _clusterParent);
                 RectTransform penalty = penaltyObj.GetComponent<RectTransform>();
-                penalty.anchoredPosition = penaltyPos;
+                penalty.anchoredPosition = pos;
                 penalty.localScale = Vector3.one * penaltyScale;
 
                 TargetInteraction penaltyInteraction = penalty.GetComponent<TargetInteraction>();
@@ -147,6 +163,16 @@ namespace GoalRush
 
                 _currentPenalties.Add(penalty.gameObject);
             }
+        }
+
+        private bool TooClose(Vector2 pos, List<Vector2> others, float minDist)
+        {
+            foreach (var other in others)
+            {
+                if (Vector2.Distance(pos, other) < minDist)
+                    return true;
+            }
+            return false;
         }
 
         private Vector2 GetRandomPositionInGoal()
@@ -195,22 +221,29 @@ namespace GoalRush
                 _clusterParent.gameObject.SetActive(false);
         }
 
-        private void SpawnRingEffect(Vector2 position)
+        private void SpawnRingEffect(Vector2 screenPos)
         {
-            if (_ringEffectPrefab == null && _mainCanvas != null)
+            if (_ringEffectPrefab == null || _mainCanvas == null) return;
+
+            Vector2 center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            Vector2 anchoredPos = (screenPos - center) / _mainCanvas.scaleFactor;
+
+            GameObject ring = Object.Instantiate(_ringEffectPrefab, _mainCanvas.transform, false);
+            RectTransform rt = ring.GetComponent<RectTransform>();
+            if (rt != null)
             {
-                GameObject ring = new GameObject("MoveRing", typeof(RectTransform), typeof(Image));
-                ring.transform.SetParent(_mainCanvas.transform, false);
-                RectTransform rr = ring.GetComponent<RectTransform>();
-                rr.sizeDelta = new Vector2(60, 60);
-                rr.anchoredPosition = position;
-                Image rim = ring.GetComponent<Image>();
-                rim.color = new Color(1, 1, 1, 0.3f);
-                rim.raycastTarget = false;
-                rim.DOFade(0f, 0.4f);
-                rr.DOSizeDelta(new Vector2(120, 120), 0.4f).SetEase(Ease.OutCubic);
-                Destroy(ring, 0.5f);
+                rt.anchoredPosition = anchoredPos;
+                rt.sizeDelta = new Vector2(60, 60);
             }
+            Image img = ring.GetComponent<Image>();
+            if (img != null)
+            {
+                img.color = new Color(1, 1, 1, 0.3f);
+                img.DOFade(0f, 0.4f);
+            }
+            if (rt != null)
+                rt.DOSizeDelta(new Vector2(120, 120), 0.4f).SetEase(Ease.OutCubic);
+            Object.Destroy(ring, 0.5f);
         }
 
         private void PlayClusterMoveTween(Vector2 from, Vector2 to)

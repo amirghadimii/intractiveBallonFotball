@@ -31,6 +31,7 @@ namespace GoalRush
         [SerializeField] private int _basePenaltyCount = 4;
         [SerializeField] private int _maxPenaltyCount = 10;
         [SerializeField] private float _penaltyStepInterval = 20f;
+        [SerializeField] private int _scorePerStep = 100;
         [SerializeField] private float _goldShrinkPerSec = 0.004f;
         [SerializeField] private float _penaltyGrowPerSec = 0.003f;
         [SerializeField] private float _goldMinScale = 0.5f;
@@ -64,7 +65,9 @@ namespace GoalRush
         {
             get
             {
-                return Mathf.FloorToInt(ElapsedTime / _penaltyStepInterval);
+                int scoreStep = Score / _scorePerStep;
+                int timeStep = Mathf.FloorToInt(ElapsedTime / (_penaltyStepInterval * 2f));
+                return scoreStep + timeStep;
             }
         }
 

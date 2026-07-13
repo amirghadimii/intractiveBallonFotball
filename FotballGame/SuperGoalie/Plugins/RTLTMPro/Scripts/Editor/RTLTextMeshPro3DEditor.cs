@@ -5,18 +5,22 @@ using UnityEngine;
 namespace RTLTMPro
 {
     [CustomEditor(typeof(RTLTextMeshPro3D)), CanEditMultipleObjects]
-    public class RTLTextMeshPro3DEditor : TMP_EditorPanel
+    public class RTLTextMeshPro3DEditor : TMP_UiEditorPanel
     {
         private SerializedProperty originalTextProp;
+        private SerializedProperty havePropertiesChangedProp;
+        private SerializedProperty inputSourceProp;
+        private SerializedProperty isInputPasingRequiredProp;
         private SerializedProperty preserveNumbersProp;
         private SerializedProperty farsiProp;
         private SerializedProperty fixTagsProp;
         private SerializedProperty forceFixProp;
 
+        private bool changed;
         private bool foldout;
         private RTLTextMeshPro3D tmpro;
 
-        protected override void OnEnable()
+        private new void OnEnable()
         {
             base.OnEnable();
             foldout = true;
@@ -25,6 +29,9 @@ namespace RTLTMPro
             fixTagsProp = serializedObject.FindProperty("fixTags");
             forceFixProp = serializedObject.FindProperty("forceFix");
             originalTextProp = serializedObject.FindProperty("originalText");
+            havePropertiesChangedProp = serializedObject.FindProperty("m_havePropertiesChanged");
+            inputSourceProp = serializedObject.FindProperty("m_inputSource");
+            isInputPasingRequiredProp = serializedObject.FindProperty("m_isInputParsingRequired");
         }
 
         public override void OnInspectorGUI()
@@ -39,6 +46,13 @@ namespace RTLTMPro
             ListenForZeroWidthNoJoiner();
 
             if (EditorGUI.EndChangeCheck())
+            {
+                inputSourceProp.enumValueIndex = 0;
+                isInputPasingRequiredProp.boolValue = true;
+                changed = true;
+            }
+
+            if (changed)
                 OnChanged();
 
             serializedObject.ApplyModifiedProperties();
@@ -51,24 +65,23 @@ namespace RTLTMPro
                 DrawOptions();
 
                 if (GUILayout.Button("Re-Fix"))
-                    m_HavePropertiesChanged = true;
+                    changed = true;
 
                 if (EditorGUI.EndChangeCheck())
-                    m_HavePropertiesChanged = true;
+                {
+                    changed = true;
+                }
             }
 
-            if (m_HavePropertiesChanged)
+            if(changed)
                 OnChanged();
-
-            serializedObject.ApplyModifiedProperties();
         }
 
         protected void OnChanged()
         {
             tmpro.UpdateText();
-            m_HavePropertiesChanged = false;
-            m_TextComponent.havePropertiesChanged = true;
-            m_TextComponent.ComputeMarginSize();
+            havePropertiesChangedProp.boolValue = true;
+            changed = false;
             EditorUtility.SetDirty(target);
         }
 
@@ -97,7 +110,7 @@ namespace RTLTMPro
 
             if (!shortcutPressed) return;
 
-            originalTextProp.stringValue = originalTextProp.stringValue.Insert(editor.cursorIndex, ((char) SpecialCharacters.ZeroWidthNoJoiner).ToString());
+            originalTextProp.stringValue = originalTextProp.stringValue.Insert(editor.cursorIndex, ((char) GeneralLetters.ZeroWidthNoJoiner).ToString());
             editor.selectIndex++;
             editor.cursorIndex++;
             Event.current.Use();

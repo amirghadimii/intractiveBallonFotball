@@ -318,7 +318,7 @@ public static class GoalRushSetupWizard
         bg.GetComponent<Image>().raycastTarget = false;
 
         GameObject text = CreateUIText("LoadingText", container.transform,
-            "LOADING...", 48, Vector2.zero, new Vector2(400, 80));
+            "در حال بارگذاری...", 48, Vector2.zero, new Vector2(400, 80));
         text.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.922f, 0.231f);
 
         container.SetActive(false);
@@ -339,12 +339,12 @@ public static class GoalRushSetupWizard
             new Vector2(0, 100), new Vector2(800, 100));
 
         GameObject btn = CreateButton("StartButton", menu.transform,
-            "START GAME", 36, new Vector2(0, -40), new Vector2(300, 70),
+            "شروع بازی", 36, new Vector2(0, -40), new Vector2(300, 70),
             new Color(0.298f, 0.686f, 0.314f));
 
         btn.AddComponent<Shadow>();
 
-        CreateUIText("HighScoreText", menu.transform, "BEST: 0", 22,
+        CreateUIText("HighScoreText", menu.transform, "رکورد: 0", 22,
             new Vector2(0, -110), new Vector2(300, 40));
     }
 
@@ -360,22 +360,31 @@ public static class GoalRushSetupWizard
         GameObject scorePanel = CreateGlassPanel("ScorePanel", hud.transform,
             new Vector2(0, 1), new Vector2(0, 1),
             new Vector2(40, -40), new Vector2(220, 70));
-        CreateUIText("ScoreText", scorePanel.transform, "Score: 0", 28,
+        CreateUIText("ScoreText", scorePanel.transform, "امتیاز: 0", 28,
             Vector2.zero, new Vector2(200, 50));
+
+        GameObject hitsText = CreateUIText("HitsText", hud.transform, "تعداد گل: 0", 22,
+            new Vector2(40, -100), new Vector2(200, 40));
+        RectTransform hitsRt = hitsText.GetComponent<RectTransform>();
+        hitsRt.anchorMin = hitsRt.anchorMax = new Vector2(0, 1);
+        hitsRt.pivot = new Vector2(0, 1);
 
         GameObject timerPanel = CreateGlassPanel("TimerPanel", hud.transform,
             new Vector2(1, 1), new Vector2(1, 1),
             new Vector2(-40, -40), new Vector2(160, 70));
-        CreateUIText("TimerText", timerPanel.transform, "120s", 28,
+        CreateUIText("TimerText", timerPanel.transform, "120 ثانیه", 28,
             Vector2.zero, new Vector2(140, 50));
 
-        CreateUIText("ComboText", hud.transform, "", 24,
-            new Vector2(0, -80), new Vector2(300, 50));
+        GameObject comboText = CreateUIText("ComboText", hud.transform, "", 22,
+            new Vector2(-40, -100), new Vector2(200, 40));
+        RectTransform cr = comboText.GetComponent<RectTransform>();
+        cr.anchorMin = cr.anchorMax = new Vector2(1, 1);
+        cr.pivot = new Vector2(1, 1);
 
         GameObject diffPanel = CreateGlassPanel("DifficultyPanel", hud.transform,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1),
             new Vector2(0, -40), new Vector2(160, 50));
-        CreateUIText("DifficultyText", diffPanel.transform, "LEVEL 0", 18,
+        CreateUIText("DifficultyText", diffPanel.transform, "سطح 0", 18,
             Vector2.zero, new Vector2(140, 36));
 
         GameObject pauseBtn = CreateButton("PauseButton", hud.transform,
@@ -437,34 +446,34 @@ public static class GoalRushSetupWizard
         CreateImageFull("OverlayBg", container.transform, new Color(0, 0, 0, 0.7f));
 
         GameObject title = CreateUIText("GameOverTitle", container.transform,
-            "GAME OVER", 72, new Vector2(0, 140), new Vector2(600, 100));
+            "پایان بازی", 72, new Vector2(0, 140), new Vector2(600, 100));
         title.GetComponent<TextMeshProUGUI>().color = new Color(0.957f, 0.263f, 0.212f);
 
         CreateUIText("ScoreLabel", container.transform,
-            "Final Score", 28, new Vector2(0, 60), new Vector2(400, 50));
+            "امتیاز نهایی", 28, new Vector2(0, 60), new Vector2(400, 50));
 
         CreateUIText("FinalScoreText", container.transform,
             "0", 80, new Vector2(0, -10), new Vector2(400, 80));
 
         CreateUIText("HighScoreText", container.transform,
-            "BEST: 0", 22, new Vector2(0, -70), new Vector2(300, 40));
+            "رکورد: 0", 22, new Vector2(0, -70), new Vector2(300, 40));
 
         GameObject newHighScore = CreateUIText("NewHighScoreText", container.transform,
-            "NEW HIGH SCORE!", 28, new Vector2(0, -105), new Vector2(400, 40));
+            "رکورد جدید!", 28, new Vector2(0, -105), new Vector2(400, 40));
         newHighScore.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.84f, 0);
         newHighScore.SetActive(false);
 
         CreateUIText("AccuracyText", container.transform,
-            "Accuracy: 0%", 20, new Vector2(0, -145), new Vector2(300, 30));
+            "دقت: 0%", 20, new Vector2(0, -145), new Vector2(300, 30));
 
         CreateUIText("GoldHitsText", container.transform,
-            "Hits: 0 / 0", 20, new Vector2(0, -170), new Vector2(300, 30));
+            "ضربات: 0 / 0", 20, new Vector2(0, -170), new Vector2(300, 30));
 
         CreateUIText("ComboText", container.transform,
-            "Best Combo: 0", 20, new Vector2(0, -195), new Vector2(300, 30));
+            "بهترین ترکیب: 0", 20, new Vector2(0, -195), new Vector2(300, 30));
 
         CreateButton("RestartButton", container.transform,
-            "PLAY AGAIN", 32, new Vector2(0, -130), new Vector2(280, 65),
+            "دوباره", 32, new Vector2(0, -130), new Vector2(280, 65),
             new Color(0.298f, 0.686f, 0.314f));
 
         container.SetActive(false);
@@ -480,7 +489,7 @@ public static class GoalRushSetupWizard
         r.sizeDelta = Vector2.zero;
 
         CreateImageFull("PauseBg", overlay.transform, new Color(0, 0, 0, 0.7f));
-        CreateUIText("PauseText", overlay.transform, "PAUSED", 72,
+        CreateUIText("PauseText", overlay.transform, "مکث", 72,
             Vector2.zero, new Vector2(400, 100)).GetComponent<TextMeshProUGUI>().color = Color.white;
         overlay.SetActive(false);
     }
@@ -508,7 +517,7 @@ public static class GoalRushSetupWizard
         r.anchoredPosition = new Vector2(0, -100);
         r.sizeDelta = new Vector2(400, 80);
 
-        GameObject txt = CreateUIText("LevelUpText", container.transform, "LEVEL 1!", 48,
+        GameObject txt = CreateUIText("LevelUpText", container.transform, "سطح ۱!", 48,
             Vector2.zero, new Vector2(400, 80));
         txt.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.84f, 0);
         container.SetActive(false);
@@ -528,6 +537,7 @@ public static class GoalRushSetupWizard
         tmp.text = text;
         tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
+        tmp.isRightToLeftText = true;
         tmp.color = Color.white;
         tmp.fontStyle = FontStyles.Bold;
         return go;
@@ -565,6 +575,7 @@ public static class GoalRushSetupWizard
         tmp.text = label;
         tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
+        tmp.isRightToLeftText = true;
         tmp.color = Color.white;
         tmp.fontStyle = FontStyles.Bold;
         return btn;
@@ -627,7 +638,7 @@ public static class GoalRushSetupWizard
 
         // Always delete old prefabs to ensure fresh creation
         string[] prefabFiles = { "/GoldTarget.prefab", "/PenaltyTarget.prefab", "/FloatingText.prefab",
-            "/GoldHitParticles.prefab", "/PenaltyHitParticles.prefab" };
+            "/GoldHitParticles.prefab", "/PenaltyHitParticles.prefab", "/RingEffect.prefab" };
         foreach (var f in prefabFiles)
         {
             string p = dir + f;
@@ -640,13 +651,14 @@ public static class GoalRushSetupWizard
         CreateFloatingTextPrefab(dir);
         CreateGoldHitParticles(dir);
         CreatePenaltyHitParticles(dir);
+        CreateRingEffectPrefab(dir);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
         // Verify prefabs were created
         string[] checkFiles = { "/GoldTarget.prefab", "/PenaltyTarget.prefab", "/FloatingText.prefab",
-            "/GoldHitParticles.prefab", "/PenaltyHitParticles.prefab" };
+            "/GoldHitParticles.prefab", "/PenaltyHitParticles.prefab", "/RingEffect.prefab" };
         foreach (var f in checkFiles)
         {
             string p = dir + f;
@@ -726,6 +738,7 @@ public static class GoalRushSetupWizard
         tmp.text = "+25";
         tmp.fontSize = 36;
         tmp.alignment = TextAlignmentOptions.Center;
+        tmp.isRightToLeftText = true;
         tmp.color = Color.green;
         tmp.fontStyle = FontStyles.Bold;
 
@@ -785,6 +798,23 @@ public static class GoalRushSetupWizard
         Object.DestroyImmediate(go);
     }
 
+    static void CreateRingEffectPrefab(string dir)
+    {
+        string path = dir + "/RingEffect.prefab";
+
+        GameObject go = new GameObject("RingEffect", typeof(RectTransform), typeof(Image));
+        RectTransform r = go.GetComponent<RectTransform>();
+        r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+        r.sizeDelta = new Vector2(60, 60);
+
+        Image img = go.GetComponent<Image>();
+        img.color = new Color(1, 1, 1, 0.3f);
+        img.raycastTarget = false;
+
+        PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+    }
+
     static GameObject CreateChildText(Transform parent, string name,
         string text, float fontSize, Color color, Vector2 size)
     {
@@ -799,6 +829,7 @@ public static class GoalRushSetupWizard
         tmp.text = text;
         tmp.fontSize = fontSize;
         tmp.alignment = TextAlignmentOptions.Center;
+        tmp.isRightToLeftText = true;
         tmp.color = color;
         tmp.fontStyle = FontStyles.Bold;
         return go;
@@ -843,6 +874,7 @@ public static class GoalRushSetupWizard
         if (hud != null)
         {
             LogWire(so_ui, "_scoreText", FindChildRecursive(hud.transform, "ScoreText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_hudHitsText", FindChildRecursive(hud.transform, "HitsText")?.GetComponent<TextMeshProUGUI>());
             LogWire(so_ui, "_timerText", FindChildRecursive(hud.transform, "TimerText")?.GetComponent<TextMeshProUGUI>());
             LogWire(so_ui, "_comboText", FindChildRecursive(hud.transform, "ComboText")?.GetComponent<TextMeshProUGUI>());
             LogWire(so_ui, "_difficultyText", FindChildRecursive(hud.transform, "DifficultyText")?.GetComponent<TextMeshProUGUI>());
@@ -893,6 +925,17 @@ public static class GoalRushSetupWizard
         else
             Debug.LogWarning("FloatingText prefab not found at " + ftpPath);
 
+        string celebrationParticlesPath = "Assets/FotballGame/FotballEvent/Prefabs/GoldHitParticles.prefab";
+        var celebrationPsGo = AssetDatabase.LoadAssetAtPath<GameObject>(celebrationParticlesPath);
+        if (celebrationPsGo != null)
+        {
+            var celebrationPs = celebrationPsGo.GetComponent<ParticleSystem>();
+            if (celebrationPs != null)
+                LogWire(so_ui, "_celebrationParticles", celebrationPs);
+        }
+        else
+            Debug.LogWarning("GoldHitParticles prefab not found for celebration at " + celebrationParticlesPath);
+
         so_ui.ApplyModifiedProperties();
         Debug.Log("<color=green>UIManager wired.</color>");
 
@@ -911,6 +954,11 @@ public static class GoalRushSetupWizard
         LogWire(so_spawner, "_penaltyTargetPrefab", penaltyPrefab);
         LogWire(so_spawner, "_clusterParent", FindChildRecursive(mainCanvas.transform, "ClusterParent")?.GetComponent<RectTransform>());
         LogWire(so_spawner, "_goalArea", FindChildRecursive(mainCanvas.transform, "GoalFrame")?.GetComponent<RectTransform>());
+
+        string ringPath = "Assets/FotballGame/FotballEvent/Prefabs/RingEffect.prefab";
+        var ringPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ringPath);
+        if (ringPrefab != null) LogWire(so_spawner, "_ringEffectPrefab", ringPrefab);
+
         so_spawner.ApplyModifiedProperties();
         Debug.Log("<color=green>TargetSpawner wired.</color>");
 
