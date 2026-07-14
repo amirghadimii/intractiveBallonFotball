@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UPersian.Components;
 
 
 public static class GoalRushSetupWizard
@@ -193,6 +194,7 @@ public static class GoalRushSetupWizard
         CreateGoalFrame(root);
         CreateRedFlash(root);
         CreateGreenFlash(root);
+        CreateGoldFlash(root);
         CreateClusterParent(root);
         CreateLoadingOverlay(root);
         CreateMenuContainer(root);
@@ -294,6 +296,12 @@ public static class GoalRushSetupWizard
         flash.GetComponent<Image>().raycastTarget = false;
     }
 
+    static void CreateGoldFlash(Transform parent)
+    {
+        GameObject flash = CreateImageFull("GoldFlashOverlay", parent, new Color(1, 0.84f, 0, 0));
+        flash.GetComponent<Image>().raycastTarget = false;
+    }
+
     static void CreateClusterParent(Transform parent)
     {
         GameObject cluster = new GameObject("ClusterParent", typeof(RectTransform));
@@ -319,7 +327,7 @@ public static class GoalRushSetupWizard
 
         GameObject text = CreateUIText("LoadingText", container.transform,
             "در حال بارگذاری...", 48, Vector2.zero, new Vector2(400, 80));
-        text.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.922f, 0.231f);
+        text.GetComponent<RtlText>().color = new Color(1, 0.922f, 0.231f);
 
         container.SetActive(false);
     }
@@ -357,29 +365,42 @@ public static class GoalRushSetupWizard
         hr.anchorMax = Vector2.one;
         hr.sizeDelta = Vector2.zero;
 
-        GameObject scorePanel = CreateGlassPanel("ScorePanel", hud.transform,
-            new Vector2(0, 1), new Vector2(0, 1),
-            new Vector2(40, -40), new Vector2(220, 70));
-        CreateUIText("ScoreText", scorePanel.transform, "امتیاز: 0", 28,
-            Vector2.zero, new Vector2(200, 50));
+        GameObject inGamePnl = new GameObject("InGamePnl", typeof(RectTransform));
+        inGamePnl.transform.SetParent(hud.transform, false);
+        RectTransform igr = inGamePnl.GetComponent<RectTransform>();
+        igr.anchorMin = Vector2.zero;
+        igr.anchorMax = Vector2.one;
+        igr.sizeDelta = Vector2.zero;
 
-        GameObject hitsText = CreateUIText("HitsText", hud.transform, "تعداد گل: 0", 22,
-            new Vector2(40, -100), new Vector2(200, 40));
-        RectTransform hitsRt = hitsText.GetComponent<RectTransform>();
+        CreateUIText("HitsText", inGamePnl.transform, "تعداد گل: 0", 22,
+            new Vector2(40, -40), new Vector2(200, 40));
+        RectTransform hitsRt = inGamePnl.transform.Find("HitsText").GetComponent<RectTransform>();
         hitsRt.anchorMin = hitsRt.anchorMax = new Vector2(0, 1);
         hitsRt.pivot = new Vector2(0, 1);
 
-        GameObject timerPanel = CreateGlassPanel("TimerPanel", hud.transform,
-            new Vector2(1, 1), new Vector2(1, 1),
-            new Vector2(-40, -40), new Vector2(160, 70));
-        CreateUIText("TimerText", timerPanel.transform, "120 ثانیه", 28,
-            Vector2.zero, new Vector2(140, 50));
+        CreateUIText("ScoreText", inGamePnl.transform, "امتیاز: 0", 28,
+            new Vector2(-40, -40), new Vector2(200, 50));
+        RectTransform scoreRt = inGamePnl.transform.Find("ScoreText").GetComponent<RectTransform>();
+        scoreRt.anchorMin = scoreRt.anchorMax = new Vector2(1, 1);
+        scoreRt.pivot = new Vector2(1, 1);
 
-        GameObject comboText = CreateUIText("ComboText", hud.transform, "", 22,
-            new Vector2(-40, -100), new Vector2(200, 40));
-        RectTransform cr = comboText.GetComponent<RectTransform>();
-        cr.anchorMin = cr.anchorMax = new Vector2(1, 1);
-        cr.pivot = new Vector2(1, 1);
+        CreateUIText("ComboText", inGamePnl.transform, "", 22,
+            new Vector2(40, -100), new Vector2(200, 40));
+        RectTransform comboRt = inGamePnl.transform.Find("ComboText").GetComponent<RectTransform>();
+        comboRt.anchorMin = comboRt.anchorMax = new Vector2(0, 1);
+        comboRt.pivot = new Vector2(0, 1);
+
+        CreateUIText("TimerText", inGamePnl.transform, "120 ثانیه", 28,
+            new Vector2(-40, -100), new Vector2(160, 50));
+        RectTransform timerRt = inGamePnl.transform.Find("TimerText").GetComponent<RectTransform>();
+        timerRt.anchorMin = timerRt.anchorMax = new Vector2(1, 1);
+        timerRt.pivot = new Vector2(1, 1);
+
+        CreateUIText("MissCountText", inGamePnl.transform, "تعداد اشتباه: 0", 20,
+            new Vector2(0, 40), new Vector2(200, 36));
+        RectTransform missRt = inGamePnl.transform.Find("MissCountText").GetComponent<RectTransform>();
+        missRt.anchorMin = missRt.anchorMax = new Vector2(0.5f, 0);
+        missRt.pivot = new Vector2(0.5f, 0);
 
         GameObject diffPanel = CreateGlassPanel("DifficultyPanel", hud.transform,
             new Vector2(0.5f, 1), new Vector2(0.5f, 1),
@@ -447,7 +468,7 @@ public static class GoalRushSetupWizard
 
         GameObject title = CreateUIText("GameOverTitle", container.transform,
             "پایان بازی", 72, new Vector2(0, 140), new Vector2(600, 100));
-        title.GetComponent<TextMeshProUGUI>().color = new Color(0.957f, 0.263f, 0.212f);
+        title.GetComponent<RtlText>().color = new Color(0.957f, 0.263f, 0.212f);
 
         CreateUIText("ScoreLabel", container.transform,
             "امتیاز نهایی", 28, new Vector2(0, 60), new Vector2(400, 50));
@@ -460,7 +481,7 @@ public static class GoalRushSetupWizard
 
         GameObject newHighScore = CreateUIText("NewHighScoreText", container.transform,
             "رکورد جدید!", 28, new Vector2(0, -105), new Vector2(400, 40));
-        newHighScore.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.84f, 0);
+        newHighScore.GetComponent<RtlText>().color = new Color(1, 0.84f, 0);
         newHighScore.SetActive(false);
 
         CreateUIText("AccuracyText", container.transform,
@@ -490,7 +511,7 @@ public static class GoalRushSetupWizard
 
         CreateImageFull("PauseBg", overlay.transform, new Color(0, 0, 0, 0.7f));
         CreateUIText("PauseText", overlay.transform, "مکث", 72,
-            Vector2.zero, new Vector2(400, 100)).GetComponent<TextMeshProUGUI>().color = Color.white;
+            Vector2.zero, new Vector2(400, 100)).GetComponent<RtlText>().color = Color.white;
         overlay.SetActive(false);
     }
 
@@ -519,27 +540,26 @@ public static class GoalRushSetupWizard
 
         GameObject txt = CreateUIText("LevelUpText", container.transform, "سطح ۱!", 48,
             Vector2.zero, new Vector2(400, 80));
-        txt.GetComponent<TextMeshProUGUI>().color = new Color(1, 0.84f, 0);
+        txt.GetComponent<RtlText>().color = new Color(1, 0.84f, 0);
         container.SetActive(false);
     }
 
     static GameObject CreateUIText(string name, Transform parent, string text,
         float fontSize, Vector2 pos, Vector2 size)
     {
-        GameObject go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        GameObject go = new GameObject(name, typeof(RectTransform), typeof(RtlText));
         go.transform.SetParent(parent, false);
         RectTransform r = go.GetComponent<RectTransform>();
         r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
         r.anchoredPosition = pos;
         r.sizeDelta = size;
 
-        TextMeshProUGUI tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text = text;
-        tmp.fontSize = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.isRightToLeftText = true;
-        tmp.color = Color.white;
-        tmp.fontStyle = FontStyles.Bold;
+        RtlText rtl = go.GetComponent<RtlText>();
+        rtl.text = text;
+        rtl.fontSize = (int)fontSize;
+        rtl.alignment = TextAnchor.MiddleCenter;
+        rtl.color = Color.white;
+        rtl.fontStyle = FontStyle.Bold;
         return go;
     }
 
@@ -564,20 +584,19 @@ public static class GoalRushSetupWizard
         cb.pressedColor = color * 0.8f;
         btnComp.colors = cb;
 
-        GameObject txt = new GameObject("Text", typeof(RectTransform), typeof(TextMeshProUGUI));
+        GameObject txt = new GameObject("Text", typeof(RectTransform), typeof(RtlText));
         txt.transform.SetParent(btn.transform, false);
         RectTransform tr = txt.GetComponent<RectTransform>();
         tr.anchorMin = Vector2.zero;
         tr.anchorMax = Vector2.one;
         tr.sizeDelta = Vector2.zero;
 
-        TextMeshProUGUI tmp = txt.GetComponent<TextMeshProUGUI>();
-        tmp.text = label;
-        tmp.fontSize = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.isRightToLeftText = true;
-        tmp.color = Color.white;
-        tmp.fontStyle = FontStyles.Bold;
+        RtlText rtl = txt.GetComponent<RtlText>();
+        rtl.text = label;
+        rtl.fontSize = (int)fontSize;
+        rtl.alignment = TextAnchor.MiddleCenter;
+        rtl.color = Color.white;
+        rtl.fontStyle = FontStyle.Bold;
         return btn;
     }
 
@@ -730,17 +749,16 @@ public static class GoalRushSetupWizard
         string path = dir + "/FloatingText.prefab";
 
         GameObject go = new GameObject("FloatingText",
-            typeof(RectTransform), typeof(TextMeshProUGUI), typeof(CanvasGroup));
+            typeof(RectTransform), typeof(RtlText), typeof(CanvasGroup));
         RectTransform r = go.GetComponent<RectTransform>();
         r.sizeDelta = new Vector2(200, 50);
 
-        TextMeshProUGUI tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text = "+25";
-        tmp.fontSize = 36;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.isRightToLeftText = true;
-        tmp.color = Color.green;
-        tmp.fontStyle = FontStyles.Bold;
+        RtlText rtl2 = go.GetComponent<RtlText>();
+        rtl2.text = "+25";
+        rtl2.fontSize = 36;
+        rtl2.alignment = TextAnchor.MiddleCenter;
+        rtl2.color = Color.green;
+        rtl2.fontStyle = FontStyle.Bold;
 
         go.GetComponent<CanvasGroup>().alpha = 1f;
 
@@ -818,20 +836,19 @@ public static class GoalRushSetupWizard
     static GameObject CreateChildText(Transform parent, string name,
         string text, float fontSize, Color color, Vector2 size)
     {
-        GameObject go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
+        GameObject go = new GameObject(name, typeof(RectTransform), typeof(RtlText));
         go.transform.SetParent(parent, false);
         RectTransform r = go.GetComponent<RectTransform>();
         r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
         r.sizeDelta = size;
         r.anchoredPosition = Vector2.zero;
 
-        TextMeshProUGUI tmp = go.GetComponent<TextMeshProUGUI>();
-        tmp.text = text;
-        tmp.fontSize = fontSize;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.isRightToLeftText = true;
-        tmp.color = color;
-        tmp.fontStyle = FontStyles.Bold;
+        RtlText rtl3 = go.GetComponent<RtlText>();
+        rtl3.text = text;
+        rtl3.fontSize = (int)fontSize;
+        rtl3.alignment = TextAnchor.MiddleCenter;
+        rtl3.color = color;
+        rtl3.fontStyle = FontStyle.Bold;
         return go;
     }
 
@@ -873,11 +890,12 @@ public static class GoalRushSetupWizard
         var hud = FindChildRecursive(mainCanvas.transform, "HUDContainer");
         if (hud != null)
         {
-            LogWire(so_ui, "_scoreText", FindChildRecursive(hud.transform, "ScoreText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_hudHitsText", FindChildRecursive(hud.transform, "HitsText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_timerText", FindChildRecursive(hud.transform, "TimerText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_comboText", FindChildRecursive(hud.transform, "ComboText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_difficultyText", FindChildRecursive(hud.transform, "DifficultyText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_scoreText", FindChildRecursive(hud.transform, "ScoreText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_hudHitsText", FindChildRecursive(hud.transform, "HitsText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_timerText", FindChildRecursive(hud.transform, "TimerText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_comboText", FindChildRecursive(hud.transform, "ComboText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_missCountText", FindChildRecursive(hud.transform, "MissCountText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_difficultyText", FindChildRecursive(hud.transform, "DifficultyText")?.GetComponent<RtlText>());
 
             var pauseBtn = FindChildRecursive(hud.transform, "PauseButton")?.GetComponent<Button>();
             if (pauseBtn != null) LogWire(so_ui, "_pauseButton", pauseBtn);
@@ -886,40 +904,41 @@ public static class GoalRushSetupWizard
 
         var countdown = FindChildRecursive(mainCanvas.transform, "CountdownContainer");
         if (countdown != null)
-            LogWire(so_ui, "_countdownText", FindChildRecursive(countdown.transform, "CountdownText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_countdownText", FindChildRecursive(countdown.transform, "CountdownText")?.GetComponent<RtlText>());
 
         var gameOver = FindChildRecursive(mainCanvas.transform, "GameOverContainer");
         if (gameOver != null)
         {
-            LogWire(so_ui, "_finalScoreText", FindChildRecursive(gameOver.transform, "FinalScoreText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_highScoreText", FindChildRecursive(gameOver.transform, "HighScoreText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_newHighScoreText", FindChildRecursive(gameOver.transform, "NewHighScoreText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_accuracyText", FindChildRecursive(gameOver.transform, "AccuracyText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_gameOverComboText", FindChildRecursive(gameOver.transform, "ComboText")?.GetComponent<TextMeshProUGUI>());
-            LogWire(so_ui, "_gameOverGoldHitsText", FindChildRecursive(gameOver.transform, "GoldHitsText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_finalScoreText", FindChildRecursive(gameOver.transform, "FinalScoreText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_highScoreText", FindChildRecursive(gameOver.transform, "HighScoreText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_newHighScoreText", FindChildRecursive(gameOver.transform, "NewHighScoreText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_accuracyText", FindChildRecursive(gameOver.transform, "AccuracyText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_gameOverComboText", FindChildRecursive(gameOver.transform, "ComboText")?.GetComponent<RtlText>());
+            LogWire(so_ui, "_gameOverGoldHitsText", FindChildRecursive(gameOver.transform, "GoldHitsText")?.GetComponent<RtlText>());
         }
 
         var menu = FindChildRecursive(mainCanvas.transform, "MenuContainer");
         if (menu != null)
         {
             LogWire(so_ui, "_startButton", FindChildRecursive(menu.transform, "StartButton")?.GetComponent<Button>());
-            LogWire(so_ui, "_menuHighScoreText", FindChildRecursive(menu.transform, "HighScoreText")?.GetComponent<TextMeshProUGUI>());
+            LogWire(so_ui, "_menuHighScoreText", FindChildRecursive(menu.transform, "HighScoreText")?.GetComponent<RtlText>());
         }
         if (gameOver != null)
             LogWire(so_ui, "_restartButton", FindChildRecursive(gameOver.transform, "RestartButton")?.GetComponent<Button>());
 
         LogWire(so_ui, "_redFlashImage", FindChildRecursive(mainCanvas.transform, "RedFlashOverlay")?.GetComponent<Image>());
         LogWire(so_ui, "_greenFlashImage", FindChildRecursive(mainCanvas.transform, "GreenFlashOverlay")?.GetComponent<Image>());
+        LogWire(so_ui, "_goldFlashImage", FindChildRecursive(mainCanvas.transform, "GoldFlashOverlay")?.GetComponent<Image>());
         LogWire(so_ui, "_pauseOverlay", FindChildRecursive(mainCanvas.transform, "PauseOverlay"));
         LogWire(so_ui, "_notificationContainer", FindChildRecursive(mainCanvas.transform, "NotificationContainer"));
-        LogWire(so_ui, "_notificationText", FindChildRecursive(mainCanvas.transform, "NotificationText")?.GetComponent<TextMeshProUGUI>());
+        LogWire(so_ui, "_notificationText", FindChildRecursive(mainCanvas.transform, "NotificationText")?.GetComponent<RtlText>());
         LogWire(so_ui, "_levelUpContainer", FindChildRecursive(mainCanvas.transform, "LevelUpContainer"));
-        LogWire(so_ui, "_levelUpText", FindChildRecursive(mainCanvas.transform, "LevelUpText")?.GetComponent<TextMeshProUGUI>());
+        LogWire(so_ui, "_levelUpText", FindChildRecursive(mainCanvas.transform, "LevelUpText")?.GetComponent<RtlText>());
         LogWire(so_ui, "_mainCamera", Camera.main);
         LogWire(so_ui, "_floatingCanvas", floatingCanvas?.GetComponent<Canvas>());
 
         string ftpPath = "Assets/FotballGame/FotballEvent/Prefabs/FloatingText.prefab";
-        var ftpPrefab = AssetDatabase.LoadAssetAtPath<TextMeshProUGUI>(ftpPath);
+        var ftpPrefab = AssetDatabase.LoadAssetAtPath<RtlText>(ftpPath);
         if (ftpPrefab != null)
             LogWire(so_ui, "_floatingTextPrefab", ftpPrefab);
         else

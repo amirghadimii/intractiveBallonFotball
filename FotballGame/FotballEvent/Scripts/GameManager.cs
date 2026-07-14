@@ -133,6 +133,8 @@ namespace GoalRush
         public System.Action<int> OnCountdownTick;
         public System.Action<int> OnComboChanged;
         public System.Action<int> OnDifficultyStepChanged;
+        public System.Action OnGoldHit;
+        public System.Action<int> OnPenaltyHit;
 
         private Coroutine _countdownCoroutine;
         private Coroutine _gameTimerCoroutine;
@@ -230,6 +232,7 @@ namespace GoalRush
             GoldHits++;
             Combo++;
             OnComboChanged?.Invoke(Combo);
+            OnGoldHit?.Invoke();
 
             int bonus = (Combo > 1 ? Combo * _comboBonusPerStep : 0);
             if (bonus > 0)
@@ -239,6 +242,7 @@ namespace GoalRush
         public void RecordPenaltyHit()
         {
             PenaltyHits++;
+            OnPenaltyHit?.Invoke(PenaltyHits);
             if (Combo > 0)
             {
                 Combo = 0;

@@ -16,6 +16,7 @@ namespace GoalRush
         [SerializeField] private RtlText _timerText;
         [SerializeField] private RtlText _comboText;
         [SerializeField] private RtlText _difficultyText;
+        [SerializeField] private RtlText _missCountText;
 
         [Header("Menu")]
         [SerializeField] private GameObject _menuContainer;
@@ -34,6 +35,7 @@ namespace GoalRush
         [Header("Screen Effects")]
         [SerializeField] private Image _redFlashImage;
         [SerializeField] private Image _greenFlashImage;
+        [SerializeField] private Image _goldFlashImage;
         [SerializeField] private float _flashDuration = 0.3f;
 
         [Header("Camera Shake")]
@@ -110,6 +112,8 @@ namespace GoalRush
                 _greenFlashImage.color = new Color(0, 1, 0, 0);
             if (_redFlashImage != null)
                 _redFlashImage.color = new Color(1, 0, 0, 0);
+            if (_goldFlashImage != null)
+                _goldFlashImage.color = Color.red;
 
             if (_menuHighScoreText != null)
                 _menuHighScoreText.text = $"رکورد: {GameManager.Instance.HighScore}";
@@ -132,6 +136,8 @@ namespace GoalRush
                 gm.OnStateChanged += OnGameStateChanged;
                 gm.OnComboChanged += OnComboChanged;
                 gm.OnDifficultyStepChanged += OnDifficultyStepChanged;
+                gm.OnGoldHit += OnGoldHit;
+                gm.OnPenaltyHit += OnPenaltyHit;
             }
 
             if (_menuContainer != null)
@@ -159,6 +165,8 @@ namespace GoalRush
                 GameManager.Instance.OnStateChanged -= OnGameStateChanged;
                 GameManager.Instance.OnComboChanged -= OnComboChanged;
                 GameManager.Instance.OnDifficultyStepChanged -= OnDifficultyStepChanged;
+                GameManager.Instance.OnGoldHit -= OnGoldHit;
+                GameManager.Instance.OnPenaltyHit -= OnPenaltyHit;
             }
 
             if (_startButton != null)
@@ -234,7 +242,7 @@ namespace GoalRush
                 _timerText.color = Color.white;
 
                 if (_hudHitsText != null)
-                    _hudHitsText.text = "تعداد گل: 0";
+                    _hudHitsText.text = "0";
 
                 if (_comboText != null)
                 {
@@ -243,9 +251,12 @@ namespace GoalRush
                 }
                 if (_difficultyText != null)
                 {
-                    _difficultyText.text = "سطح 0";
+                    _difficultyText.text = "0";
                     _difficultyText.transform.localScale = Vector3.one;
                 }
+
+                if (_missCountText != null)
+                    _missCountText.text = "0";
             }
 
             if (state == GameState.GameOver)
@@ -304,7 +315,7 @@ namespace GoalRush
             {
                 var gm = GameManager.Instance;
                 if (gm != null)
-                    _hudHitsText.text = $"تعداد گل: {gm.GoldHits}";
+                    _hudHitsText.text = $"{gm.GoldHits}";
             }
 
             _scoreTween?.Kill();
@@ -485,6 +496,32 @@ namespace GoalRush
             _greenFlashImage.DOFade(0f, 0.2f).SetEase(Ease.OutCubic);
         }
 
+        public void FlashGold()
+        {
+            if (_goldFlashImage == null) return;
+            _goldFlashImage.color = Color.red;
+            _goldFlashImage.DOFade(0f, 0.25f).SetEase(Ease.OutCubic);
+        }
+
+        private void OnGoldHit()
+        {
+            FlashGold();
+            UpdateMissCount();
+        }
+
+        private void OnPenaltyHit(int count)
+        {
+            UpdateMissCount();
+        }
+
+        private void UpdateMissCount()
+        {
+            if (_missCountText == null) return;
+            var gm = GameManager.Instance;
+            if (gm != null)
+                _missCountText.text = $" {gm.PenaltyHits}";
+        }
+
         public void PlayHighScoreCelebration()
         {
             FlashGreen();
@@ -505,7 +542,7 @@ namespace GoalRush
 
             if (combo > 1)
             {
-                _comboText.text = $"ترکیب x{combo}";
+                _comboText.text = $"x{combo}";
                 _comboText.transform.DOKill();
                 _comboText.transform.localScale = Vector3.one * 0.8f;
                 _comboText.transform.DOScale(Vector3.one, 0.3f).SetEase(Ease.OutBack);
