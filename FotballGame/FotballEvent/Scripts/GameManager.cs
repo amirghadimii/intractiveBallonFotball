@@ -1,5 +1,7 @@
 using UnityEngine;
 using System.Collections;
+using UnityEngine.EventSystems;
+using System.Collections.Generic;
 
 namespace GoalRush
 {
@@ -18,11 +20,8 @@ namespace GoalRush
         [SerializeField] private float _countdownInterval = 0.8f;
 
         [Header("Scoring")]
-        [SerializeField] private int _goldScoreMin = 15;
-        [SerializeField] private int _goldScoreMax = 35;
-        [SerializeField] private int _penaltyBaseScore = -15;
-        [SerializeField] private float _goldScorePerSec = 0.25f;
-        [SerializeField] private float _penaltyScorePerSec = 0.2f;
+        [SerializeField] private int _goldScoreBase = 6;
+        [SerializeField] private int _goldIncreasePerHit = 2;
 
         [Header("Combo")]
         [SerializeField] private int _comboBonusPerStep = 2;
@@ -81,19 +80,49 @@ namespace GoalRush
 
         public int GetRandomGoldScore()
         {
-            int bonus = Mathf.FloorToInt(ElapsedTime * _goldScorePerSec);
-            int min = _goldScoreMin + bonus;
-            int max = _goldScoreMax + bonus;
-            return Random.Range(min, max + 1);
+            int score;
+            int safety = 0;
+            do
+            {
+                score = Random.Range(_goldScoreBase, _goldScoreBase + 5);
+                safety++;
+            } while (score == _lastGoldScore && safety < 10);
+            _lastGoldScore = score;
+            return score;
         }
 
         public int PenaltyTargetScore
         {
             get
             {
-                int bonus = Mathf.FloorToInt(ElapsedTime * _penaltyScorePerSec);
-                return _penaltyBaseScore - bonus;
+                return -Mathf.Max(3, Mathf.RoundToInt(_goldScoreBase * 0.5f));
             }
+        }
+
+        public int[] GetUniquePenaltyScores(int count)
+        {
+            int[] scores = new int[count];
+            int baseVal = PenaltyTargetScore;
+            int halfRange = Mathf.Max(1, count / 2);
+            for (int i = 0; i < count; i++)
+            {
+                int candidate;
+                bool unique;
+                int safety = 0;
+                do
+                {
+                    unique = true;
+                    candidate = baseVal + Random.Range(-halfRange, halfRange + 1);
+                    if (candidate > -2) candidate = -2;
+                    for (int j = 0; j < i; j++)
+                    {
+                        if (scores[j] == candidate) { unique = false; break; }
+                    }
+                    safety++;
+                } while (!unique && safety < 20);
+                scores[i] = candidate;
+            }
+            return scores;
         }
 
         public float GoldTargetScale
@@ -122,6 +151,7 @@ namespace GoalRush
         public int TotalClicks { get; private set; }
         public int GoldHits { get; private set; }
         public int PenaltyHits { get; private set; }
+        public int Misses { get; private set; }
         public float Accuracy
         {
             get { return TotalClicks > 0 ? (float)GoldHits / TotalClicks * 100f : 0f; }
@@ -135,10 +165,29 @@ namespace GoalRush
         public System.Action<int> OnDifficultyStepChanged;
         public System.Action OnGoldHit;
         public System.Action<int> OnPenaltyHit;
+        public System.Action<int> OnConsecutiveWrongsChanged;
+        public System.Action OnLeaderboardUpdated;
+
+        public string PlayerName
+        {
+            get { return PlayerInfo.LoadName(); }
+            set { PlayerInfo.Save(value, TeamIndex); }
+        }
+
+        public int TeamIndex
+        {
+            get { return PlayerInfo.LoadTeamIndex(); }
+            set { PlayerInfo.Save(PlayerName, value); }
+        }
 
         private Coroutine _countdownCoroutine;
         private Coroutine _gameTimerCoroutine;
         private int _lastDifficultyStep = -1;
+        private int _consecutiveWrongs;
+
+        public int ConsecutiveWrongs { get { return _consecutiveWrongs; } }
+        private int _lastGoldScore = -1;
+        private int _lastEmptyClickFrame = -1;
 
         private void Awake()
         {
@@ -148,6 +197,47 @@ namespace GoalRush
                 return;
             }
             _instance = this;
+        }
+
+        private void Update()
+        {
+            if (State != GameState.Playing) return;
+            if (!Input.GetMouseButtonDown(0)) return;
+
+            var ped = new PointerEventData(EventSystem.current) { position = Input.mousePosition };
+            var results = new List<RaycastResult>();
+            EventSystem.current.RaycastAll(ped, results);
+
+            foreach (var r in results)
+            {
+                if (r.gameObject.GetComponent<TargetInteraction>() != null) return;
+                var handler = r.gameObject.GetComponent<IPointerClickHandler>();
+                if (handler != null && !(handler is BackgroundClickHandler)) return;
+            }
+
+            if (_lastEmptyClickFrame != Time.frameCount)
+            {
+                _lastEmptyClickFrame = Time.frameCount;
+                ProcessEmptyClick();
+            }
+        }
+
+        public void HandleBackgroundClick()
+        {
+            if (_lastEmptyClickFrame == Time.frameCount) return;
+            _lastEmptyClickFrame = Time.frameCount;
+            ProcessEmptyClick();
+        }
+
+        private void ProcessEmptyClick()
+        {
+            RecordEmptyClick();
+            AudioManager.Instance?.PlayPenaltyHit();
+            if (UIManager.Instance != null)
+            {
+                UIManager.Instance.ScreenShake();
+                UIManager.Instance.FlashRed();
+            }
         }
 
         public void StartCountdown()
@@ -212,8 +302,48 @@ namespace GoalRush
             if (IsNewHighScore)
                 HighScore = Score;
 
+            SaveScoreToLeaderboard();
+
             State = GameState.GameOver;
             OnStateChanged?.Invoke(State);
+        }
+
+        public void SaveScoreToLeaderboard()
+        {
+            if (Score <= 0) return;
+            var data = LeaderboardData.Load();
+            data.AddEntry(new LeaderboardEntry
+            {
+                playerName = PlayerName,
+                teamIndex = TeamIndex,
+                score = Score,
+                goldHits = GoldHits,
+                totalClicks = TotalClicks,
+                accuracy = Accuracy,
+                date = System.DateTime.Now.ToString("yyyy-MM-dd")
+            });
+            LeaderboardData.Save(data);
+            OnLeaderboardUpdated?.Invoke();
+        }
+
+        public LeaderboardData GetLeaderboardData()
+        {
+            return LeaderboardData.Load();
+        }
+
+        public void ClearLeaderboardData()
+        {
+            LeaderboardData.Clear();
+            OnLeaderboardUpdated?.Invoke();
+        }
+
+        public void ResetAllData()
+        {
+            ClearLeaderboardData();
+            PlayerInfo.Clear();
+            PlayerPrefs.DeleteKey("GoalRush_HighScore");
+            PlayerPrefs.Save();
+            ResetGame();
         }
 
         public void AddScore(int amount)
@@ -234,6 +364,10 @@ namespace GoalRush
             OnComboChanged?.Invoke(Combo);
             OnGoldHit?.Invoke();
 
+            _consecutiveWrongs = 0;
+            OnConsecutiveWrongsChanged?.Invoke(0);
+            _goldScoreBase += _goldIncreasePerHit;
+
             int bonus = (Combo > 1 ? Combo * _comboBonusPerStep : 0);
             if (bonus > 0)
                 AddScore(bonus);
@@ -242,12 +376,23 @@ namespace GoalRush
         public void RecordPenaltyHit()
         {
             PenaltyHits++;
+            Misses++;
             OnPenaltyHit?.Invoke(PenaltyHits);
+            _consecutiveWrongs++;
+            OnConsecutiveWrongsChanged?.Invoke(_consecutiveWrongs);
             if (Combo > 0)
             {
                 Combo = 0;
                 OnComboChanged?.Invoke(0);
             }
+        }
+
+        public void RecordEmptyClick()
+        {
+            TotalClicks++;
+            Misses++;
+            _consecutiveWrongs++;
+            OnConsecutiveWrongsChanged?.Invoke(_consecutiveWrongs);
         }
 
         public void ResetCombo()
@@ -267,8 +412,12 @@ namespace GoalRush
             TotalClicks = 0;
             GoldHits = 0;
             PenaltyHits = 0;
+            Misses = 0;
             IsNewHighScore = false;
             _lastDifficultyStep = -1;
+            _consecutiveWrongs = 0;
+            _lastGoldScore = -1;
+            _goldScoreBase = 6;
             RemainingTime = _gameDuration;
             OnScoreChanged?.Invoke(0);
             OnTimerUpdated?.Invoke(_gameDuration);

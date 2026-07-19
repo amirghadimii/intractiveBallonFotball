@@ -36,7 +36,7 @@ namespace GoalRush
         [SerializeField] private Image _redFlashImage;
         [SerializeField] private Image _greenFlashImage;
         [SerializeField] private Image _goldFlashImage;
-        [SerializeField] private float _flashDuration = 0.3f;
+        [SerializeField] private float _flashDuration = 0.6f;
 
         [Header("Camera Shake")]
         [SerializeField] private Camera _mainCamera;
@@ -57,6 +57,36 @@ namespace GoalRush
         [Header("Pause")]
         [SerializeField] private GameObject _pauseOverlay;
         [SerializeField] private Button _pauseButton;
+
+        [Header("Menu Extended")]
+        [SerializeField] private Button _leaderboardButton;
+        [SerializeField] private Button _resetButton;
+        [SerializeField] private Image[] _teamIconImages;
+        [SerializeField] private GameObject[] _teamIconHighlights;
+        [SerializeField] private Button[] _teamIconButtons;
+        [SerializeField] private InputField _nameInput;
+        [SerializeField] private RtlText _namePlaceholder;
+
+        [Header("Leaderboard")]
+        [SerializeField] private GameObject _leaderboardContainer;
+        [SerializeField] private RectTransform _leaderboardListParent;
+        [SerializeField] private GameObject _leaderboardEntryPrefab;
+        [SerializeField] private Button _leaderboardBackButton;
+        [SerializeField] private Button _leaderboardResetButton;
+
+        [Header("Back Navigation")]
+        [SerializeField] private Button _backToMenuButton;
+
+        private Button[] _allTeamButtons;
+        private readonly Color[] _teamColors = new Color[]
+        {
+            new Color(0.957f, 0.263f, 0.212f), // Red
+            new Color(0.204f, 0.596f, 0.859f), // Blue
+            new Color(0.298f, 0.686f, 0.314f), // Green
+            new Color(0.957f, 0.867f, 0.212f), // Yellow
+            new Color(0.506f, 0.259f, 0.608f), // Purple
+            new Color(0.957f, 0.612f, 0.071f), // Orange
+        };
 
         [Header("Notifications")]
         [SerializeField] private GameObject _notificationContainer;
@@ -107,16 +137,32 @@ namespace GoalRush
             if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
             if (_notificationContainer != null) _notificationContainer.SetActive(false);
             if (_levelUpContainer != null) _levelUpContainer.SetActive(false);
+            if (_leaderboardContainer != null) _leaderboardContainer.SetActive(false);
 
             if (_greenFlashImage != null)
                 _greenFlashImage.color = new Color(0, 1, 0, 0);
             if (_redFlashImage != null)
                 _redFlashImage.color = new Color(1, 0, 0, 0);
             if (_goldFlashImage != null)
-                _goldFlashImage.color = Color.red;
+                _goldFlashImage.color =  new Color(1, 0, 0, 0);
 
-            if (_menuHighScoreText != null)
-                _menuHighScoreText.text = $"رکورد: {GameManager.Instance.HighScore}";
+            var gm = GameManager.Instance;
+            if (gm != null)
+            {
+                if (_menuHighScoreText != null)
+                    _menuHighScoreText.text = $"رکورد: {gm.HighScore}";
+
+                gm.OnScoreChanged += UpdateScore;
+                gm.OnTimerUpdated += UpdateTimer;
+                gm.OnCountdownTick += ShowCountdown;
+                gm.OnStateChanged += OnGameStateChanged;
+                gm.OnComboChanged += OnComboChanged;
+                gm.OnDifficultyStepChanged += OnDifficultyStepChanged;
+                gm.OnGoldHit += OnGoldHit;
+                gm.OnPenaltyHit += OnPenaltyHit;
+                gm.OnConsecutiveWrongsChanged += OnConsecutiveWrongsChanged;
+                gm.OnLeaderboardUpdated += PopulateLeaderboard;
+            }
 
             if (_startButton != null)
                 _startButton.onClick.AddListener(OnStartClicked);
@@ -127,17 +173,33 @@ namespace GoalRush
             if (_pauseButton != null)
                 _pauseButton.onClick.AddListener(TogglePause);
 
-            var gm = GameManager.Instance;
-            if (gm != null)
+            if (_leaderboardButton != null)
+                _leaderboardButton.onClick.AddListener(OnLeaderboardClicked);
+
+            if (_resetButton != null)
+                _resetButton.onClick.AddListener(OnResetClicked);
+
+            if (_leaderboardBackButton != null)
+                _leaderboardBackButton.onClick.AddListener(OnLeaderboardBackClicked);
+
+            if (_leaderboardResetButton != null)
+                _leaderboardResetButton.onClick.AddListener(OnLeaderboardResetClicked);
+
+            if (_backToMenuButton != null)
+                _backToMenuButton.onClick.AddListener(OnBackToMenuClicked);
+
+            InitTeamIcons();
+
+            if (_nameInput != null)
             {
-                gm.OnScoreChanged += UpdateScore;
-                gm.OnTimerUpdated += UpdateTimer;
-                gm.OnCountdownTick += ShowCountdown;
-                gm.OnStateChanged += OnGameStateChanged;
-                gm.OnComboChanged += OnComboChanged;
-                gm.OnDifficultyStepChanged += OnDifficultyStepChanged;
-                gm.OnGoldHit += OnGoldHit;
-                gm.OnPenaltyHit += OnPenaltyHit;
+                string savedName = PlayerInfo.LoadName();
+                if (!string.IsNullOrEmpty(savedName))
+                {
+                    _nameInput.text = savedName;
+                    if (_namePlaceholder != null)
+                        _namePlaceholder.gameObject.SetActive(false);
+                }
+                _nameInput.onValueChanged.AddListener(OnNameChanged);
             }
 
             if (_menuContainer != null)
@@ -147,6 +209,23 @@ namespace GoalRush
                 if (_menuContainer != null)
                     _menuContainer.transform.DOScale(Vector3.one, 0.4f).SetEase(Ease.OutBack);
             });
+        }
+
+        private void InitTeamIcons()
+        {
+            int savedTeam = PlayerInfo.LoadTeamIndex();
+            for (int i = 0; i < 6; i++)
+            {
+                if (_teamIconImages != null && i < _teamIconImages.Length && _teamIconImages[i] != null)
+                    _teamIconImages[i].color = _teamColors[i];
+
+                if (_teamIconHighlights != null && i < _teamIconHighlights.Length && _teamIconHighlights[i] != null)
+                    _teamIconHighlights[i].SetActive(i == savedTeam);
+
+                int idx = i;
+                if (_teamIconButtons != null && i < _teamIconButtons.Length && _teamIconButtons[i] != null)
+                    _teamIconButtons[i].onClick.AddListener(() => OnTeamIconClicked(idx));
+            }
         }
 
         private void Update()
@@ -167,12 +246,24 @@ namespace GoalRush
                 GameManager.Instance.OnDifficultyStepChanged -= OnDifficultyStepChanged;
                 GameManager.Instance.OnGoldHit -= OnGoldHit;
                 GameManager.Instance.OnPenaltyHit -= OnPenaltyHit;
+                GameManager.Instance.OnConsecutiveWrongsChanged -= OnConsecutiveWrongsChanged;
+                GameManager.Instance.OnLeaderboardUpdated -= PopulateLeaderboard;
             }
 
             if (_startButton != null)
                 _startButton.onClick.RemoveListener(OnStartClicked);
             if (_restartButton != null)
                 _restartButton.onClick.RemoveListener(OnRestartClicked);
+            if (_leaderboardButton != null)
+                _leaderboardButton.onClick.RemoveListener(OnLeaderboardClicked);
+            if (_resetButton != null)
+                _resetButton.onClick.RemoveListener(OnResetClicked);
+            if (_leaderboardBackButton != null)
+                _leaderboardBackButton.onClick.RemoveListener(OnLeaderboardBackClicked);
+            if (_leaderboardResetButton != null)
+                _leaderboardResetButton.onClick.RemoveListener(OnLeaderboardResetClicked);
+            if (_backToMenuButton != null)
+                _backToMenuButton.onClick.RemoveListener(OnBackToMenuClicked);
         }
 
         private void SetAllContainers(bool active)
@@ -207,6 +298,115 @@ namespace GoalRush
             GameManager.Instance.ResetGame();
         }
 
+        private void OnBackToMenuClicked()
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            GameManager.Instance.ResetGame();
+        }
+
+        private void OnLeaderboardClicked()
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            PopulateLeaderboard();
+            if (_menuContainer != null) _menuContainer.SetActive(false);
+            if (_leaderboardContainer != null) _leaderboardContainer.SetActive(true);
+        }
+
+        private void OnLeaderboardBackClicked()
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            if (_leaderboardContainer != null) _leaderboardContainer.SetActive(false);
+            if (_menuContainer != null) _menuContainer.SetActive(true);
+        }
+
+        private void OnResetClicked()
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            GameManager.Instance.ResetAllData();
+            if (_menuHighScoreText != null)
+                _menuHighScoreText.text = "رکورد: 0";
+            if (_nameInput != null)
+            {
+                _nameInput.text = "";
+                if (_namePlaceholder != null)
+                    _namePlaceholder.gameObject.SetActive(true);
+            }
+            if (_teamIconHighlights != null)
+            {
+                for (int i = 0; i < _teamIconHighlights.Length; i++)
+                {
+                    if (_teamIconHighlights[i] != null)
+                        _teamIconHighlights[i].SetActive(i == 0);
+                }
+            }
+        }
+
+        private void OnLeaderboardResetClicked()
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            GameManager.Instance.ClearLeaderboardData();
+            PopulateLeaderboard();
+        }
+
+        private void OnTeamIconClicked(int index)
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            GameManager gm = GameManager.Instance;
+            if (gm != null) gm.TeamIndex = index;
+            for (int i = 0; i < _teamIconHighlights.Length; i++)
+            {
+                if (_teamIconHighlights[i] != null)
+                    _teamIconHighlights[i].SetActive(i == index);
+            }
+        }
+
+        private void OnNameChanged(string value)
+        {
+            GameManager gm = GameManager.Instance;
+            if (gm != null)
+            {
+                gm.PlayerName = value;
+                if (_namePlaceholder != null)
+                    _namePlaceholder.gameObject.SetActive(string.IsNullOrEmpty(value));
+            }
+        }
+
+        private void PopulateLeaderboard()
+        {
+            if (_leaderboardListParent == null || _leaderboardEntryPrefab == null) return;
+
+            for (int i = _leaderboardListParent.childCount - 1; i >= 0; i--)
+            {
+                Transform child = _leaderboardListParent.GetChild(i);
+                if (child.gameObject.activeSelf)
+                    Destroy(child.gameObject);
+            }
+
+            var data = GameManager.Instance.GetLeaderboardData();
+            for (int i = 0; i < data.entries.Count; i++)
+            {
+                var entry = data.entries[i];
+                GameObject row = Object.Instantiate(_leaderboardEntryPrefab, _leaderboardListParent);
+
+                RtlText[] texts = row.GetComponentsInChildren<RtlText>(true);
+                foreach (var t in texts)
+                {
+                    if (t.name == "RankText") t.text = $"#{i + 1}";
+                    else if (t.name == "NameText") t.text = entry.playerName;
+                    else if (t.name == "ScoreText") t.text = entry.score.ToString();
+                }
+
+                Image[] imgs = row.GetComponentsInChildren<Image>(true);
+                foreach (var img in imgs)
+                {
+                    if (img.name == "TeamIconImage" && entry.teamIndex >= 0 && entry.teamIndex < _teamColors.Length)
+                        img.color = _teamColors[entry.teamIndex];
+                }
+
+                row.transform.localScale = Vector3.one;
+            }
+        }
+
         private void OnGameStateChanged(GameState state)
         {
             StopCoroutine(nameof(TransitionRoutine));
@@ -220,6 +420,7 @@ namespace GoalRush
             if (_countdownContainer != null) _countdownContainer.SetActive(state == GameState.Countdown);
             if (_gameOverContainer != null) _gameOverContainer.SetActive(state == GameState.GameOver);
             if (_pauseOverlay != null) _pauseOverlay.SetActive(false);
+            if (_leaderboardContainer != null) _leaderboardContainer.SetActive(false);
             _isPaused = false;
             Time.timeScale = 1f;
 
@@ -234,6 +435,12 @@ namespace GoalRush
                 _tickCoroutine = null;
             }
             StopTimerPulse();
+
+            if (state == GameState.Menu)
+            {
+                if (_menuHighScoreText != null)
+                    _menuHighScoreText.text = $"رکورد: {GameManager.Instance.HighScore}";
+            }
 
             if (state == GameState.Playing)
             {
@@ -459,12 +666,14 @@ namespace GoalRush
             RtlText floating = Instantiate(_floatingTextPrefab, _floatingCanvas.transform);
             floating.text = text;
             floating.color = color;
-            floating.rectTransform.position = screenPos;
+
+            Vector2 center = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            floating.rectTransform.anchoredPosition = (screenPos - center) / _floatingCanvas.scaleFactor;
 
             CanvasGroup cg = floating.GetComponent<CanvasGroup>();
             if (cg == null) cg = floating.gameObject.AddComponent<CanvasGroup>();
 
-            floating.rectTransform.DOAnchorPosY(100f, 0.8f).SetRelative().SetEase(Ease.OutCubic);
+            floating.rectTransform.DOAnchorPosY(100f, 2f).SetRelative().SetEase(Ease.OutCubic);
             cg.DOFade(0f, 0.6f).SetDelay(0.2f).OnComplete(() => Destroy(floating.gameObject));
         }
 
@@ -487,20 +696,25 @@ namespace GoalRush
             if (_redFlashImage == null) return;
             _redFlashImage.color = new Color(1, 0, 0, 0.4f);
             _redFlashImage.DOFade(0f, _flashDuration).SetEase(Ease.OutCubic);
+            if (_goldFlashImage == null) return;
+            _goldFlashImage.color=   new Color(1, 0, 0, 1);
+            _goldFlashImage.color = Color.red;
+            _goldFlashImage.DOFade(0f, 1f).SetEase(Ease.Flash);
         }
 
         public void FlashGreen()
         {
             if (_greenFlashImage == null) return;
             _greenFlashImage.color = new Color(0, 1, 0, 0.2f);
-            _greenFlashImage.DOFade(0f, 0.2f).SetEase(Ease.OutCubic);
+            _greenFlashImage.DOFade(0f, 0.25f).SetEase(Ease.OutCubic);
         }
 
         public void FlashGold()
         {
             if (_goldFlashImage == null) return;
-            _goldFlashImage.color = Color.red;
-            _goldFlashImage.DOFade(0f, 0.25f).SetEase(Ease.OutCubic);
+            _goldFlashImage.color=   new Color(1, 0, 0, 1);
+            _goldFlashImage.color = Color.green;
+            _goldFlashImage.DOFade(0f, 0.5f).SetEase(Ease.Flash);
         }
 
         private void OnGoldHit()
@@ -514,12 +728,17 @@ namespace GoalRush
             UpdateMissCount();
         }
 
+        private void OnConsecutiveWrongsChanged(int value)
+        {
+            UpdateMissCount();
+        }
+
         private void UpdateMissCount()
         {
             if (_missCountText == null) return;
             var gm = GameManager.Instance;
             if (gm != null)
-                _missCountText.text = $" {gm.PenaltyHits}";
+                _missCountText.text = $"تعداد اشتباه: {gm.Misses}";
         }
 
         public void PlayHighScoreCelebration()

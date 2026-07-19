@@ -51,6 +51,7 @@ namespace GoalRush
 
         private Tween _waveTween;
         private Vector2 _baseAnchoredPosition;
+        public float WaveAmplitude { get; private set; }
 
         private void Awake()
         {
@@ -107,6 +108,21 @@ namespace GoalRush
 
             int step = gm.CurrentDifficultyStep;
             float amp = step * _waveAmplitudePerStep;
+
+            if (_spawner != null && _spawner.GoalArea != null && _targetType == TargetType.Gold)
+            {
+                Rect gb = _spawner.GetGoalBoundsInAnchoredSpace();
+                Vector2 cp = _spawner.ClusterParent.anchoredPosition;
+                float halfH = _rectTransform.sizeDelta.y * 0.5f * _rectTransform.localScale.y;
+                float maxUp = gb.yMax - cp.y - halfH - 5f;
+                float maxDn = cp.y - gb.yMin - halfH - 5f;
+                float maxAmp = Mathf.Min(maxUp, maxDn);
+                if (maxAmp < 0.5f) maxAmp = 0.5f;
+                amp = Mathf.Min(amp, maxAmp);
+            }
+
+            WaveAmplitude = amp;
+
             if (amp < 0.5f)
             {
                 _waveTween?.Kill();
@@ -230,9 +246,38 @@ namespace GoalRush
         private void PlayParticles(ParticleSystem ps, Vector2 screenPos)
         {
             if (ps == null) return;
-            var instance = Instantiate(ps, screenPos, Quaternion.identity);
+
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+
+            RectTransform canvasRect = canvas.transform as RectTransform;
+            Vector2 canvasPos;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPos, canvas.worldCamera, out canvasPos);
+
+            var instance = Instantiate(ps, canvas.transform);
+            var rt = instance.GetComponent<RectTransform>();
+            if (rt != null)
+                rt.anchoredPosition = canvasPos;
+            else
+                instance.transform.localPosition = canvasPos;
+
+            var main = instance.main;
+            main.startSize = new ParticleSystem.MinMaxCurve(8f, 16f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(10f, 25f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.5f, 3f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+
+            var emission = instance.emission;
+            emission.SetBursts(new ParticleSystem.Burst[] {
+                new ParticleSystem.Burst(0f, new ParticleSystem.MinMaxCurve(30, 45))
+            });
+
+            var shape = instance.shape;
+            shape.shapeType = ParticleSystemShapeType.Sphere;
+            shape.radius = 0.5f;
+
             instance.Play();
-            Destroy(instance.gameObject, instance.main.duration + 0.5f);
+            Destroy(instance.gameObject, main.duration + 2f);
         }
 
         public void Setup(TargetType type, int scoreValue, TargetSpawner spawner = null)

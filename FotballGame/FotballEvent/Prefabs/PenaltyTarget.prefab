@@ -34,8 +34,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -8.9821, y: 1.9}
-  m_SizeDelta: {x: 156.8275, y: 65.0462}
+  m_AnchoredPosition: {x: -5, y: -0.000012875}
+  m_SizeDelta: {x: 196.0806, y: 81.3269}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &5597956984214303396
 CanvasRenderer:
@@ -65,10 +65,11 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: -15
+  m_text: -18
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: e96532593e3f91245baf51f882213db5, type: 2}
+  m_sharedMaterial: {fileID: -1029159122073715418, guid: e96532593e3f91245baf51f882213db5,
+    type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -92,13 +93,13 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 55
-  m_fontSizeBase: 55
+  m_fontSize: 82.9
+  m_fontSizeBase: 82.9
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 1
+  m_fontStyle: 0
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
   m_textAlignment: 65535
@@ -231,5 +232,10 @@ MonoBehaviour:
   _failParticles: {fileID: 0}
   _pulseScale: 1.05
   _pulseDuration: 0.75
+  _idleDelay: 3
+  _idlePulseScale: 1.08
+  _idlePulseDuration: 0.5
+  _waveAmplitudePerStep: 2
+  _waveFrequency: 1.2
   _hoverScale: 1.15
   _hoverDuration: 0.15

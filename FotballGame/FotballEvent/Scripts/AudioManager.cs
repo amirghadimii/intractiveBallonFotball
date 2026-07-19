@@ -82,6 +82,8 @@ namespace GoalRush
             Play(_gameOverClip);
             if (_musicSource != null)
                 _musicSource.Stop();
+            if (_sfxSource != null)
+                _sfxSource.Stop();
         }
 
         public void PlayLevelUp()

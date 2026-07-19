@@ -28,11 +28,17 @@ namespace GoalRush
         private List<GameObject> _currentPenalties = new List<GameObject>();
         private Canvas _mainCanvas;
 
+        public RectTransform GoalArea => _goalArea;
+        public RectTransform ClusterParent => _clusterParent;
+
         private void Start()
         {
             var gm = GameManager.Instance;
             if (gm != null)
+            {
                 gm.OnStateChanged += OnGameStateChanged;
+                gm.OnConsecutiveWrongsChanged += OnConsecutiveWrongsChanged;
+            }
 
             _mainCanvas = GetComponentInParent<Canvas>() ?? FindFirstObjectByType<Canvas>();
         }
@@ -40,7 +46,42 @@ namespace GoalRush
         private void OnDestroy()
         {
             if (GameManager.Instance != null)
+            {
                 GameManager.Instance.OnStateChanged -= OnGameStateChanged;
+                GameManager.Instance.OnConsecutiveWrongsChanged -= OnConsecutiveWrongsChanged;
+            }
+        }
+
+        private void OnConsecutiveWrongsChanged(int value)
+        {
+            if (value >= 2)
+                MoveClusterRandom();
+        }
+
+        public void MoveClusterRandom()
+        {
+            ClearPenalties();
+            _clusterParent.gameObject.SetActive(true);
+
+            Vector2 newPos = GetRandomPositionInGoal();
+            _clusterParent.anchoredPosition = newPos;
+
+            if (_currentGold != null)
+            {
+                var gm = GameManager.Instance;
+                if (gm != null)
+                {
+                    int newScore = gm.GetRandomGoldScore();
+                    TargetInteraction goldInt = _currentGold.GetComponent<TargetInteraction>();
+                    if (goldInt != null)
+                        goldInt.Setup(TargetType.Gold, newScore, this);
+                    TextMeshProUGUI label = _currentGold.GetComponentInChildren<TextMeshProUGUI>();
+                    if (label != null)
+                        label.text = $"+{newScore}";
+                }
+            }
+
+            SpawnPenalties();
         }
 
         private void OnGameStateChanged(GameState state)
@@ -120,6 +161,7 @@ namespace GoalRush
             var gm = GameManager.Instance;
             if (gm == null) return;
             int count = gm.CurrentPenaltyCount;
+            int[] penaltyScores = gm.GetUniquePenaltyScores(count);
             float penaltyScale = gm.PenaltyTargetScale;
             float goldScale = gm.GoldTargetScale;
             float angleStep = 360f / count;
@@ -127,25 +169,93 @@ namespace GoalRush
             float goldHalf = _goldTargetPrefab.GetComponent<RectTransform>().sizeDelta.x * 0.5f * goldScale;
             float penaltyHalf = _penaltyTargetPrefab.GetComponent<RectTransform>().sizeDelta.x * 0.5f * penaltyScale;
             float penaltyDiameter = penaltyHalf * 2;
-            float minRadius = goldHalf + penaltyHalf + 15f;
-            float minDist = penaltyDiameter + 10f;
+            float waveAmp = 0f;
+            if (_currentGold != null)
+            {
+                var gi = _currentGold.GetComponent<TargetInteraction>();
+                if (gi != null) waveAmp = gi.WaveAmplitude;
+            }
+            float minDistFromGold = goldHalf + penaltyHalf + 15f + waveAmp;
+            float minDistBetween = penaltyDiameter + 10f;
+
+            Vector2 clusterPos = _clusterParent.anchoredPosition;
+            Rect goalRect = _goalArea.rect;
+            float goalLeft = _goalArea.anchoredPosition.x + goalRect.xMin;
+            float goalRight = _goalArea.anchoredPosition.x + goalRect.xMax;
+            float goalBottom = _goalArea.anchoredPosition.y + goalRect.yMin;
+            float goalTop = _goalArea.anchoredPosition.y + goalRect.yMax;
 
             List<Vector2> placedPositions = new List<Vector2>();
 
             for (int i = 0; i < count; i++)
             {
-                Vector2 pos;
-                int attempts = 0;
-                int maxAttempts = 20;
+                Vector2 pos = Vector2.zero;
+                bool found = false;
 
-                do
+                for (int attempt = 0; attempt < 40; attempt++)
                 {
                     float angle = i * angleStep + Random.Range(-_angleJitter * Mathf.Rad2Deg, _angleJitter * Mathf.Rad2Deg);
-                    float radius = Mathf.Max(minRadius, _baseRadius * penaltyScale) + Random.Range(0f, _radiusRandomRange);
+                    float radius = Mathf.Max(minDistFromGold, _baseRadius * penaltyScale) + Random.Range(0f, _radiusRandomRange);
                     float rad = angle * Mathf.Deg2Rad;
-                    pos = new Vector2(Mathf.Cos(rad) * radius, Mathf.Sin(rad) * radius);
-                    attempts++;
-                } while (TooClose(pos, placedPositions, minDist) && attempts < maxAttempts);
+                    Vector2 candidate = new Vector2(Mathf.Cos(rad) * radius, Mathf.Sin(rad) * radius);
+
+                    Vector2 worldPos = clusterPos + candidate;
+
+                    if (worldPos.x - penaltyHalf < goalLeft) continue;
+                    if (worldPos.x + penaltyHalf > goalRight) continue;
+                    if (worldPos.y - penaltyHalf < goalBottom) continue;
+                    if (worldPos.y + penaltyHalf > goalTop) continue;
+                    if (TooClose(candidate, placedPositions, minDistBetween)) continue;
+
+                    pos = candidate;
+                    found = true;
+                    break;
+                }
+
+                if (!found)
+                {
+                    for (int attempt = 0; attempt < 40; attempt++)
+                    {
+                        float angle = Random.Range(0f, 360f);
+                        float rad = angle * Mathf.Deg2Rad;
+                        float radius = minDistFromGold + Random.Range(0f, _baseRadius * penaltyScale * 2f);
+                        Vector2 candidate = new Vector2(Mathf.Cos(rad) * radius, Mathf.Sin(rad) * radius);
+                        Vector2 worldPos = clusterPos + candidate;
+
+                        if (worldPos.x - penaltyHalf < goalLeft) continue;
+                        if (worldPos.x + penaltyHalf > goalRight) continue;
+                        if (worldPos.y - penaltyHalf < goalBottom) continue;
+                        if (worldPos.y + penaltyHalf > goalTop) continue;
+                        if (TooClose(candidate, placedPositions, minDistBetween)) continue;
+
+                        pos = candidate;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    for (int attempt = 0; attempt < 50; attempt++)
+                    {
+                        float x = Random.Range(goalLeft + penaltyHalf, goalRight - penaltyHalf);
+                        float y = Random.Range(goalBottom + penaltyHalf, goalTop - penaltyHalf);
+                        Vector2 candidate = new Vector2(x, y) - clusterPos;
+
+                        float distFromGold = candidate.magnitude;
+                        if (distFromGold < penaltyHalf * 2f) continue;
+                        if (TooClose(candidate, placedPositions, minDistBetween)) continue;
+
+                        pos = candidate;
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (!found)
+                {
+                    pos = new Vector2(Random.Range(-100f, 100f), Random.Range(-100f, 100f));
+                }
 
                 placedPositions.Add(pos);
 
@@ -155,11 +265,11 @@ namespace GoalRush
                 penalty.localScale = Vector3.one * penaltyScale;
 
                 TargetInteraction penaltyInteraction = penalty.GetComponent<TargetInteraction>();
-                penaltyInteraction.Setup(TargetType.Penalty, gm.PenaltyTargetScore);
+                penaltyInteraction.Setup(TargetType.Penalty, penaltyScores[i]);
 
                 TextMeshProUGUI label = penalty.GetComponentInChildren<TextMeshProUGUI>();
                 if (label != null)
-                    label.text = $"{gm.PenaltyTargetScore}";
+                    label.text = $"{penaltyScores[i]}";
 
                 _currentPenalties.Add(penalty.gameObject);
             }
@@ -173,6 +283,12 @@ namespace GoalRush
                     return true;
             }
             return false;
+        }
+
+        public Rect GetGoalBoundsInAnchoredSpace()
+        {
+            Rect r = _goalArea.rect;
+            return new Rect(_goalArea.anchoredPosition.x + r.xMin, _goalArea.anchoredPosition.y + r.yMin, r.width, r.height);
         }
 
         private Vector2 GetRandomPositionInGoal()
@@ -232,7 +348,7 @@ namespace GoalRush
             RectTransform rt = ring.GetComponent<RectTransform>();
             if (rt != null)
             {
-                rt.anchoredPosition = anchoredPos;
+                rt.anchoredPosition = new Vector3(0,0,0);
                 rt.sizeDelta = new Vector2(60, 60);
             }
             Image img = ring.GetComponent<Image>();
