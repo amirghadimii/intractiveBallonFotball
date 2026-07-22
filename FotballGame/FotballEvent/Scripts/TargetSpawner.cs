@@ -66,10 +66,12 @@ namespace GoalRush
             Vector2 newPos = GetRandomPositionInGoal();
             _clusterParent.anchoredPosition = newPos;
 
-            if (_currentGold != null)
+            var gm = GameManager.Instance;
+            if (gm != null)
             {
-                var gm = GameManager.Instance;
-                if (gm != null)
+                gm.ResetConsecutiveWrongs();
+
+                if (_currentGold != null)
                 {
                     int newScore = gm.GetRandomGoldScore();
                     TargetInteraction goldInt = _currentGold.GetComponent<TargetInteraction>();

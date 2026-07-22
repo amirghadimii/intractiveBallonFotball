@@ -168,6 +168,8 @@ namespace GoalRush
         public System.Action<int> OnConsecutiveWrongsChanged;
         public System.Action OnLeaderboardUpdated;
 
+        public LeaderboardEntry LastPlayerEntry { get; private set; }
+
         public string PlayerName
         {
             get { return PlayerInfo.LoadName(); }
@@ -298,6 +300,7 @@ namespace GoalRush
 
         private void EndGame()
         {
+            Debug.Log($"EndGame called. Score={Score}, TotalClicks={TotalClicks}, GoldHits={GoldHits}");
             IsNewHighScore = Score > HighScore;
             if (IsNewHighScore)
                 HighScore = Score;
@@ -310,9 +313,14 @@ namespace GoalRush
 
         public void SaveScoreToLeaderboard()
         {
-            if (Score <= 0) return;
+            Debug.Log($"SaveScoreToLeaderboard: TotalClicks={TotalClicks}, GoldHits={GoldHits}, Score={Score}");
+            if (TotalClicks == 0)
+            {
+                Debug.Log("SaveScoreToLeaderboard: skipped (TotalClicks == 0)");
+                return;
+            }
             var data = LeaderboardData.Load();
-            data.AddEntry(new LeaderboardEntry
+            var entry = new LeaderboardEntry
             {
                 playerName = PlayerName,
                 teamIndex = TeamIndex,
@@ -321,8 +329,11 @@ namespace GoalRush
                 totalClicks = TotalClicks,
                 accuracy = Accuracy,
                 date = System.DateTime.Now.ToString("yyyy-MM-dd")
-            });
+            };
+            data.AddEntry(entry);
             LeaderboardData.Save(data);
+            LastPlayerEntry = entry;
+            Debug.Log($"Leaderboard saved: {entry.playerName} | Score: {entry.score} | Team: {entry.teamIndex}");
             OnLeaderboardUpdated?.Invoke();
         }
 
@@ -395,6 +406,12 @@ namespace GoalRush
             OnConsecutiveWrongsChanged?.Invoke(_consecutiveWrongs);
         }
 
+        public void ResetConsecutiveWrongs()
+        {
+            _consecutiveWrongs = 0;
+            OnConsecutiveWrongsChanged?.Invoke(0);
+        }
+
         public void ResetCombo()
         {
             if (Combo > 0)
@@ -418,6 +435,7 @@ namespace GoalRush
             _consecutiveWrongs = 0;
             _lastGoldScore = -1;
             _goldScoreBase = 6;
+            LastPlayerEntry = null;
             RemainingTime = _gameDuration;
             OnScoreChanged?.Invoke(0);
             OnTimerUpdated?.Invoke(_gameDuration);

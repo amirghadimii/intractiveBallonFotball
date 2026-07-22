@@ -17,6 +17,9 @@ namespace GoalRush
         [SerializeField] private RtlText _comboText;
         [SerializeField] private RtlText _difficultyText;
         [SerializeField] private RtlText _missCountText;
+        [SerializeField] private Image _hudTeamIcon;
+        [SerializeField] private RtlText _hudPlayerNameText;
+        [SerializeField] private Button _hudBackButton;
 
         [Header("Menu")]
         [SerializeField] private GameObject _menuContainer;
@@ -188,6 +191,9 @@ namespace GoalRush
             if (_backToMenuButton != null)
                 _backToMenuButton.onClick.AddListener(OnBackToMenuClicked);
 
+            if (_hudBackButton != null)
+                _hudBackButton.onClick.AddListener(OnHudBackClicked);
+
             InitTeamIcons();
 
             if (_nameInput != null)
@@ -201,6 +207,8 @@ namespace GoalRush
                 }
                 _nameInput.onValueChanged.AddListener(OnNameChanged);
             }
+
+            UpdateStartButtonState();
 
             if (_menuContainer != null)
                 _menuContainer.transform.localScale = Vector3.one * 0.9f;
@@ -264,6 +272,8 @@ namespace GoalRush
                 _leaderboardResetButton.onClick.RemoveListener(OnLeaderboardResetClicked);
             if (_backToMenuButton != null)
                 _backToMenuButton.onClick.RemoveListener(OnBackToMenuClicked);
+            if (_hudBackButton != null)
+                _hudBackButton.onClick.RemoveListener(OnHudBackClicked);
         }
 
         private void SetAllContainers(bool active)
@@ -299,6 +309,12 @@ namespace GoalRush
         }
 
         private void OnBackToMenuClicked()
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            GameManager.Instance.ResetGame();
+        }
+
+        private void OnHudBackClicked()
         {
             AudioManager.Instance?.PlayButtonClick();
             GameManager.Instance.ResetGame();
@@ -369,42 +385,126 @@ namespace GoalRush
                 if (_namePlaceholder != null)
                     _namePlaceholder.gameObject.SetActive(string.IsNullOrEmpty(value));
             }
+            UpdateStartButtonState();
+        }
+
+        private void UpdateStartButtonState()
+        {
+            if (_startButton == null) return;
+            bool hasName = !string.IsNullOrEmpty(_nameInput != null ? _nameInput.text : PlayerInfo.LoadName());
+            _startButton.interactable = hasName;
         }
 
         private void PopulateLeaderboard()
         {
-            if (_leaderboardListParent == null || _leaderboardEntryPrefab == null) return;
-
-            for (int i = _leaderboardListParent.childCount - 1; i >= 0; i--)
+            if (_leaderboardListParent == null)
             {
-                Transform child = _leaderboardListParent.GetChild(i);
-                if (child.gameObject.activeSelf)
-                    Destroy(child.gameObject);
+                Debug.LogWarning("PopulateLeaderboard: _leaderboardListParent is null! Assign it in the Inspector.");
+                return;
             }
 
-            var data = GameManager.Instance.GetLeaderboardData();
+            for (int i = _leaderboardListParent.childCount - 1; i >= 0; i--)
+                Destroy(_leaderboardListParent.GetChild(i).gameObject);
+
+            var gm = GameManager.Instance;
+            var data = gm.GetLeaderboardData();
+
             for (int i = 0; i < data.entries.Count; i++)
             {
                 var entry = data.entries[i];
-                GameObject row = Object.Instantiate(_leaderboardEntryPrefab, _leaderboardListParent);
+                bool isMe = gm.LastPlayerEntry != null &&
+                            entry.playerName == gm.LastPlayerEntry.playerName &&
+                            entry.teamIndex == gm.LastPlayerEntry.teamIndex &&
+                            entry.score == gm.LastPlayerEntry.score;
 
-                RtlText[] texts = row.GetComponentsInChildren<RtlText>(true);
-                foreach (var t in texts)
-                {
-                    if (t.name == "RankText") t.text = $"#{i + 1}";
-                    else if (t.name == "NameText") t.text = entry.playerName;
-                    else if (t.name == "ScoreText") t.text = entry.score.ToString();
-                }
-
-                Image[] imgs = row.GetComponentsInChildren<Image>(true);
-                foreach (var img in imgs)
-                {
-                    if (img.name == "TeamIconImage" && entry.teamIndex >= 0 && entry.teamIndex < _teamColors.Length)
-                        img.color = _teamColors[entry.teamIndex];
-                }
-
-                row.transform.localScale = Vector3.one;
+                CreateLeaderboardRow($"{i}", entry, i, isMe);
             }
+
+            if (gm.LastPlayerEntry != null)
+            {
+                bool inTop = false;
+                foreach (var e in data.entries)
+                {
+                    if (e.playerName == gm.LastPlayerEntry.playerName &&
+                        e.teamIndex == gm.LastPlayerEntry.teamIndex &&
+                        e.score == gm.LastPlayerEntry.score)
+                    { inTop = true; break; }
+                }
+
+                if (!inTop)
+                {
+                    GameObject sep = new GameObject("YourRankSep", typeof(RectTransform), typeof(Image));
+                    sep.transform.SetParent(_leaderboardListParent, false);
+                    RectTransform sr = sep.GetComponent<RectTransform>();
+                    sr.sizeDelta = new Vector2(0, 1);
+                    sr.anchorMin = new Vector2(0, 1);
+                    sr.anchorMax = new Vector2(1, 1);
+                    sr.pivot = new Vector2(0.5f, 1);
+                    sep.GetComponent<Image>().color = new Color(0.094f, 0.200f, 0.137f);
+
+                    int rank = 1;
+                    foreach (var e in data.entries)
+                    {
+                        if (e.score > gm.LastPlayerEntry.score) rank++;
+                        else break;
+                    }
+                    CreateLeaderboardRow("You", gm.LastPlayerEntry, rank - 1, true);
+                }
+            }
+        }
+
+        private void CreateLeaderboardRow(string id, LeaderboardEntry entry, int index, bool isMe)
+        {
+            GameObject row = new GameObject($"Entry_{id}", typeof(RectTransform));
+            row.transform.SetParent(_leaderboardListParent, false);
+            RectTransform rr = row.GetComponent<RectTransform>();
+            rr.sizeDelta = new Vector2(0, 38);
+            rr.anchorMin = new Vector2(0, 1);
+            rr.anchorMax = new Vector2(1, 1);
+            rr.pivot = new Vector2(0.5f, 1);
+
+            Color rankColor = index == 0 ? new Color(0.980f, 0.800f, 0.082f) :
+                             index == 2 ? new Color(0.976f, 0.451f, 0.086f) : Color.white;
+
+            if (isMe)
+            {
+                Image bg = row.AddComponent<Image>();
+                bg.color = new Color(1, 1, 1, 0.08f);
+            }
+
+            CreateRowText(row.transform, $"{id}_Rank", $"#{index + 1}", 18, rankColor, new Vector2(55, 0), 55, 30);
+
+            GameObject icon = new GameObject($"{id}_TeamIcon", typeof(RectTransform), typeof(Image));
+            icon.transform.SetParent(row.transform, false);
+            RectTransform icr = icon.GetComponent<RectTransform>();
+            icr.anchoredPosition = new Vector2(-100, 0);
+            icr.sizeDelta = new Vector2(26, 26);
+            Image icnImg = icon.GetComponent<Image>();
+            if (entry.teamIndex >= 0 && entry.teamIndex < _teamColors.Length)
+                icnImg.color = _teamColors[entry.teamIndex];
+            Outline icnOl = icon.AddComponent<Outline>();
+            icnOl.effectColor = new Color(1, 1, 1, 0.2f);
+            icnOl.effectDistance = Vector2.zero;
+
+            string nameText = isMe ? $"{entry.playerName} (\u0634\u0645\u0627)" : entry.playerName;
+            CreateRowText(row.transform, $"{id}_Name", nameText, 16, isMe ? new Color(0.980f, 0.800f, 0.082f) : Color.white, new Vector2(75, 0), 180, 30);
+            CreateRowText(row.transform, $"{id}_Score", entry.score.ToString(), 18,
+                new Color(0.298f, 0.686f, 0.314f), new Vector2(210, 0), 80, 30);
+        }
+
+        private void CreateRowText(Transform parent, string name, string text, int size, Color color, Vector2 pos, float width, float height)
+        {
+            GameObject go = new GameObject(name, typeof(RectTransform), typeof(RtlText));
+            go.transform.SetParent(parent, false);
+            RectTransform r = go.GetComponent<RectTransform>();
+            r.anchoredPosition = pos;
+            r.sizeDelta = new Vector2(width, height);
+            RtlText rtl = go.GetComponent<RtlText>();
+            rtl.text = text;
+            rtl.fontSize = size;
+            rtl.alignment = TextAnchor.MiddleCenter;
+            rtl.color = color;
+            rtl.fontStyle = FontStyle.Bold;
         }
 
         private void OnGameStateChanged(GameState state)
@@ -440,6 +540,15 @@ namespace GoalRush
             {
                 if (_menuHighScoreText != null)
                     _menuHighScoreText.text = $"رکورد: {GameManager.Instance.HighScore}";
+
+                if (_nameInput != null)
+                {
+                    _nameInput.text = "";
+                    if (_namePlaceholder != null)
+                        _namePlaceholder.gameObject.SetActive(true);
+                }
+
+                UpdateStartButtonState();
             }
 
             if (state == GameState.Playing)
@@ -464,6 +573,16 @@ namespace GoalRush
 
                 if (_missCountText != null)
                     _missCountText.text = "0";
+
+                var gm = GameManager.Instance;
+                if (gm != null)
+                {
+                    if (_hudTeamIcon != null && gm.TeamIndex >= 0 && gm.TeamIndex < _teamColors.Length)
+                        _hudTeamIcon.color = _teamColors[gm.TeamIndex];
+
+                    if (_hudPlayerNameText != null)
+                        _hudPlayerNameText.text = gm.PlayerName;
+                }
             }
 
             if (state == GameState.GameOver)
@@ -738,7 +857,7 @@ namespace GoalRush
             if (_missCountText == null) return;
             var gm = GameManager.Instance;
             if (gm != null)
-                _missCountText.text = $"تعداد اشتباه: {gm.Misses}";
+                _missCountText.text = $" {gm.Misses}";
         }
 
         public void PlayHighScoreCelebration()

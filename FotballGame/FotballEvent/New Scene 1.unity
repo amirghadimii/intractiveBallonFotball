@@ -6470,7 +6470,7 @@ GameObject:
   - component: {fileID: 947309176}
   - component: {fileID: 947309178}
   m_Layer: 0
-  m_Name: Image
+  m_Name: ball
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6492,7 +6492,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 25, y: -541}
+  m_AnchoredPosition: {x: 760, y: -469}
   m_SizeDelta: {x: 161.993, y: 161.993}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &947309176
@@ -7565,7 +7565,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1139051094
 RectTransform:
   m_ObjectHideFlags: 0
@@ -13827,6 +13827,9 @@ MonoBehaviour:
   _comboText: {fileID: 1452677932}
   _difficultyText: {fileID: 0}
   _missCountText: {fileID: 1618776875}
+  _hudTeamIcon: {fileID: 0}
+  _hudPlayerNameText: {fileID: 0}
+  _hudBackButton: {fileID: 0}
   _menuContainer: {fileID: 880742542}
   _menuTitleText: {fileID: 0}
   _menuHighScoreText: {fileID: 1756583352}
@@ -13877,7 +13880,7 @@ MonoBehaviour:
   - {fileID: 1741567486}
   - {fileID: 2077747517}
   - {fileID: 752984957}
-  _nameInput: {fileID: 0}
+  _nameInput: {fileID: 1250518597}
   _namePlaceholder: {fileID: 172388237}
   _leaderboardContainer: {fileID: 759814190}
   _leaderboardListParent: {fileID: 964361845}
@@ -14196,7 +14199,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 242.89996, y: -40}
+  m_AnchoredPosition: {x: 258, y: -40}
   m_SizeDelta: {x: 230, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2079343336
@@ -14232,7 +14235,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "\u0628\u0627\u0634\u06AF\u0627\u0647"
+  m_Text: "\u062A\u06CC\u0645"
 --- !u!222 &2079343337
 CanvasRenderer:
   m_ObjectHideFlags: 0
